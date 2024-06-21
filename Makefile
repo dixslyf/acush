@@ -43,6 +43,9 @@ $(BUILD_DIR)/%.c.o: %.c
 test: $(TEST_EXES)
 	$(TEST_RUNNER) $(TEST_EXES_QUOTED)
 
+# Dependencies for tests.
+$(filter $(BUILD_DIR)/$(TESTS_DIR)/parse_%,$(TEST_EXES)): $(BUILD_DIR)/$(SRC_DIR)/parse.c.o
+
 # Build test executables.
 $(BUILD_DIR)/$(TESTS_DIR)/%: $(TESTS_DIR)/%.c
 	mkdir -p $(dir $@)
