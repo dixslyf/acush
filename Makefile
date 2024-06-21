@@ -46,7 +46,7 @@ test: $(TEST_EXES)
 # Build test executables.
 $(BUILD_DIR)/$(TESTS_DIR)/%: $(TESTS_DIR)/%.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) -I$(TESTS_DIR) $^ -o $@
 
 .PHONY: clean
 clean:
