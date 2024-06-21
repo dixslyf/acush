@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "assertions.h"
-#include "parse.h"
+#include "lex.h"
 
 int main() {
   for (size_t idx = 0; idx < strlen(TOKEN_SEPARATORS); idx++) {
@@ -13,8 +13,8 @@ int main() {
     char *tokens[2];
     size_t tokens_size = 2;
 
-    ASSERT_EQ(tokenise(input, tokens, tokens_size), 1);
+    ASSERT_EQ(lex(input, tokens, tokens_size), 1);
     ASSERT_EQ(strcmp(tokens[0], "foo"), 0);
-    // We don't want `tokenise` to be returning empty strings.
+    // We don't want `lex` to be returning empty strings.
   }
 }

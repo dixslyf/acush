@@ -18,4 +18,4 @@
  * @param tokens_out an array of strings to write the output tokens to
  * @param max_tokens the maximum number of tokens to write to `tokens_out`
  */
-size_t tokenise(char *input, char *tokens_out[], size_t max_tokens);
+size_t lex(char *input, char *tokens_out[], size_t max_tokens);

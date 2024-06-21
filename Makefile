@@ -44,7 +44,7 @@ test: $(TEST_EXES)
 	$(TEST_RUNNER) $(TEST_EXES_QUOTED)
 
 # Dependencies for tests.
-$(filter $(BUILD_DIR)/$(TESTS_DIR)/parse_%,$(TEST_EXES)): $(BUILD_DIR)/$(SRC_DIR)/parse.c.o
+$(filter $(BUILD_DIR)/$(TESTS_DIR)/lex_%,$(TEST_EXES)): $(BUILD_DIR)/$(SRC_DIR)/lex.c.o
 
 # Build test executables.
 $(BUILD_DIR)/$(TESTS_DIR)/%: $(TESTS_DIR)/%.c

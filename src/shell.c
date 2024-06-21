@@ -1,4 +1,4 @@
-#include "parse.h"
+#include "lex.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -46,7 +46,7 @@ int main() {
       // characters in the line. Most of the time, we'll be wasting
       // a bit of memory, but the amount wasted is trivial.
       char *tokens[line_len];
-      int num_tokens = tokenise(line, tokens, line_len);
+      int num_tokens = lex(line, tokens, line_len);
 
       // FIXME: This is just for verification. Remove this later!
       for (size_t idx = 0; idx < num_tokens; idx++) {

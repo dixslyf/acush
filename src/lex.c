@@ -1,8 +1,8 @@
 #include <string.h>
 
-#include "parse.h"
+#include "lex.h"
 
-size_t tokenise(char *input, char *tokens_out[], size_t max_tokens) {
+size_t lex(char *input, char *tokens_out[], size_t max_tokens) {
   // See `man 3 strtok_r`.
   char *saveptr = NULL;
   char *tok = strtok_r(input, TOKEN_SEPARATORS, &saveptr);
