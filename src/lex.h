@@ -15,19 +15,47 @@ struct sh_token {
 };
 
 /**
- * Parses the given input string into a sequence of tokens
+ * Keeps track of various context information required by lexing.
+ *
+ * See `lex()` for more information.
+ */
+struct sh_lex_context;
+
+/**
+ * Represents the result of a call to `lex()`.
+ */
+enum sh_lex_result {
+  /** Indicates a successful lex. */
+  SH_LEX_END,
+
+  /** Indicates that lexing has not yet finished and additional calls to `lex()`
+     are required. */
+  SH_LEX_ONGOING,
+
+  /** Indicates an error condition where there is a missing closing quote. */
+  SH_LEX_UNTERMINATED_QUOTE,
+};
+
+/** Initialises a lex context for the given input string. */
+struct sh_lex_context *init_lex_context(char const *input);
+
+/**
+ * Destroys a lex context.
+ *
+ * This function should be called on any lex contexts created by
+ * `init_lex_context()` once the context is no longer needed.
+ */
+void destroy_lex_context(struct sh_lex_context *ctx);
+
+/**
+ * Lexes the given input string into a sequence of tokens
  * delimited by the following characters: space, newline, tab,
  * form feed, carriage return and vertical tab.
  *
- * The number of parsed tokens is returned and the tokens are written to
- * `tokens_out`. `max_tokens` specifies the maximum number of tokens to write
- * to `tokens_out`, and, generally, should be the capacity of `tokens_out`.
+ * Each lex should have this function should be called multiple times with the
+ * same context. A token is written to `token_out` on every call, except when
+ * the lex has finished.
  *
- * Note that `input` will be modified!
- *
- * @return the number of tokens parsed
- * @param input the string to parse
- * @param tokens_out an array of strings to write the output tokens to
- * @param max_tokens the maximum number of tokens to write to `tokens_out`
+ * For the return value, see `enum sh_lex_result`.
  */
-ssize_t lex(char const *input, struct sh_token tokens_out[], size_t max_tokens);
+enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out);

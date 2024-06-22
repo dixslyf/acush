@@ -6,8 +6,6 @@
 
 #define WHITESPACE_DELIMITERS " \n\t\f\r\v"
 
-enum sh_state { SH_STATE_DULL, SH_STATE_QUOTED, SH_STATE_UNQUOTED };
-
 /**
  * Attempts to lex the given character point into a simple special token.
  * `0` is returned and a token corresponding to `*cp` is written to `token_out`
@@ -46,89 +44,135 @@ bool is_simple_special(char const *cp);
  */
 bool is_word_boundary(char const *cp);
 
-ssize_t lex(char const *input, struct sh_token tokens_out[],
-            size_t max_tokens) {
-  size_t token_idx = 0;
+// Represents a possible state of the lexing process.
+enum sh_state {
+  // Not in a word.
+  SH_STATE_DULL,
 
-  // The lexing process is implemented as a finite state machine (FSM).
-  // We need to initialise the state of the FSM based on the first character of
-  // the input.
+  // In a quoted section of a word.
+  SH_STATE_QUOTED,
+
+  // In an unquoted section of a word.
+  SH_STATE_UNQUOTED
+};
+
+struct sh_lex_context {
+  // Lexing is implemented as a finite state machine (FSM).
+  // `state` keeps track of the FSM's state.
   enum sh_state state;
-  if (is_word_boundary(input)) {
-    state = SH_STATE_DULL;
-  } else if (is_quote(input)) {
-    state = SH_STATE_QUOTED;
-  } else {
-    state = SH_STATE_UNQUOTED;
-  }
+
+  // Keeps track of the current character being processed in the input string.
+  char const *cp;
+
+  // Keeps track of the start quote when inside a quoted section of a word.
+  char const *quote_start;
 
   // Set up a buffer for string concatenation for when we are in a word.
+  size_t catbuf_capacity;
+  size_t catbuf_idx;
+  char *catbuf;
+};
+
+struct sh_lex_context *init_lex_context(char const *input) {
+  struct sh_lex_context ctx;
+
+  // We initialise the state of the FSM based on the first character of the
+  // input.
+  if (is_word_boundary(input)) {
+    ctx.state = SH_STATE_DULL;
+  } else if (is_quote(input)) {
+    ctx.state = SH_STATE_QUOTED;
+  } else {
+    ctx.state = SH_STATE_UNQUOTED;
+  }
+
+  ctx.cp = input;
+
+  ctx.quote_start = NULL;
+
   // The worst case scenario is that the entire input is a single word. Hence,
   // the buffer must have a size at least equal to the length of the input
   // string (including the null byte).
-  size_t catbuf_capacity = strlen(input) + 1;
-  char catbuf[catbuf_capacity];
-  size_t catbuf_idx = 0;
+  ctx.catbuf_capacity = strlen(input) + 1;
+  ctx.catbuf_idx = 0;
+  ctx.catbuf = malloc(ctx.catbuf_capacity);
+  if (ctx.catbuf == NULL) {
+    return NULL;
+  }
 
-  // Keeps track of the start quote when inside a quoted section of a word.
-  char const *quote_start = NULL;
+  // Unfortunately, we do have to dynamically allocate memory since `struct
+  // sh_lex_context` is opaque to callers. Small tradeoff for encapsulation.
+  struct sh_lex_context *ctx_out = malloc(sizeof(struct sh_lex_context));
+  if (ctx_out == NULL) {
+    free(ctx.catbuf);
+    return NULL;
+  }
 
+  *ctx_out = ctx;
+  return ctx_out;
+}
+
+void destroy_lex_context(struct sh_lex_context *ctx) {
+  free(ctx->catbuf);
+  free(ctx);
+}
+
+enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
   struct sh_token token;
-  for (char const *cp = input; *cp != '\0'; cp++) {
-    switch (state) {
+  for (; *ctx->cp != '\0'; ctx->cp++) {
+    switch (ctx->state) {
     case SH_STATE_DULL:
-      // Try lexing simple special tokens: & ; ! | < > 2>
-      if (lex_simple_special(cp, &token) == 0) {
-        tokens_out[token_idx] = token;
-        token_idx++;
-        if (token.type == SH_TOKEN_2_ANGLE_BRACKET_R) {
-          cp++;
-        }
-      }
-
       // Peek at the next character to see if we need to change state.
 
       // Start of quoted section of a word.
-      if (is_quote(cp + 1)) {
-        state = SH_STATE_QUOTED;
-        continue;
+      if (is_quote(ctx->cp + 1)) {
+        ctx->state = SH_STATE_QUOTED;
       }
 
       // Start of unquoted section of a word.
-      if (!is_word_boundary(cp + 1)) {
-        state = SH_STATE_UNQUOTED;
-        continue;
+      if (!is_word_boundary(ctx->cp + 1)) {
+        ctx->state = SH_STATE_UNQUOTED;
+      }
+
+      // Try lexing simple special tokens: & ; ! | < > 2>
+      if (lex_simple_special(ctx->cp, &token) == 0) {
+        *token_out = token;
+        if (token.type == SH_TOKEN_2_ANGLE_BRACKET_R) {
+          ctx->cp++;
+        }
+        ctx->cp++; // Need to manually increment since we are skipping the
+                   // loop's increment.
+        return SH_LEX_ONGOING;
       }
 
       // At this point, the character must be one of the whitespace delimiters.
       // Since we skip them, do nothing.
-
       break;
     case SH_STATE_QUOTED:
       // The first time we enter this state, `quote_start` should be `NULL` and
       // the character should be a quote.
-      if (quote_start == NULL) {
-        assert(is_quote(cp));
-        quote_start = cp;
+      if (ctx->quote_start == NULL) {
+        assert(is_quote(ctx->cp));
+        ctx->quote_start = ctx->cp;
         // We don't want to have the quote in the buffer, so we don't add it.
         continue;
       }
 
       // Handle quote escape sequence.
-      if (*cp == '\\' && *(cp + 1) == *quote_start) {
+      if (*ctx->cp == '\\' && *(ctx->cp + 1) == *ctx->quote_start) {
         // Skip the backslash.
-        cp++;
+        ctx->cp++;
 
         // Add the escaped quote to the buffer.
-        catbuf[catbuf_idx] = *cp;
-        catbuf_idx++;
+        ctx->catbuf[ctx->catbuf_idx] = *ctx->cp;
+        ctx->catbuf_idx++;
         continue;
       }
 
       // Still in the quoted word, so add the character to the buffer.
-      if (*cp != *quote_start) {
-        catbuf[catbuf_idx] = *cp;
-        catbuf_idx++;
+      if (*ctx->cp != *ctx->quote_start) {
+        ctx->catbuf[ctx->catbuf_idx] = *ctx->cp;
+        ctx->catbuf_idx++;
         continue;
       }
 
@@ -137,88 +181,91 @@ ssize_t lex(char const *input, struct sh_token tokens_out[],
       // peeking at the next character.
 
       // Reset `quote_start` for the next quoted section.
-      quote_start = NULL;
+      ctx->quote_start = NULL;
 
       // The next character is another quote, indicating the start of another
       // quoted word.
-      if (is_quote(cp + 1)) {
+      if (is_quote(ctx->cp + 1)) {
         // No need to change state since we're in a quoted word again.
         continue;
       }
 
       // If the current character is the last in the current word, then we
       // are done with the current word and can now create the token for it.
-      if (is_word_boundary(cp + 1)) {
+      if (is_word_boundary(ctx->cp + 1)) {
+        ctx->state = SH_STATE_DULL;
+
         // However, if we have an empty pair of quotes ("", ''), then don't
         // create the token.
-        if (catbuf_idx != 0) {
+        if (ctx->catbuf_idx != 0) {
           token.type = SH_TOKEN_WORD;
 
           // We need to dynamically allocate memory this time.
-          token.text = malloc(catbuf_idx + 1);
-          strncpy(token.text, catbuf, catbuf_idx);
-          token.text[catbuf_idx] = '\0';
+          token.text = malloc(ctx->catbuf_idx + 1);
+          strncpy(token.text, ctx->catbuf, ctx->catbuf_idx);
+          token.text[ctx->catbuf_idx] = '\0';
 
-          tokens_out[token_idx] = token;
-          token_idx++;
+          *token_out = token;
 
-          catbuf_idx = 0; // Reset for future words.
+          ctx->catbuf_idx = 0; // Reset for future words.
+
+          ctx->cp++; // Need to manually increment since we are skipping the
+                     // loop's increment.
+          return SH_LEX_ONGOING;
         }
-
-        state = SH_STATE_DULL;
-        continue;
       }
 
       // If none of the above checks are true, then we must still be within a
       // word, but now we are at the start of an unquoted section of the word.
       // E.g., "foo"bar (the next character would be 'b').
-      state = SH_STATE_UNQUOTED;
+      ctx->state = SH_STATE_UNQUOTED;
       break;
     case SH_STATE_UNQUOTED:
       // Handle escape sequences.
-      if (*cp == '\\') {
-        // Skip the backslash. Now, `cp` points to the escaped character.
-        cp++;
+      if (*ctx->cp == '\\') {
+        // Skip the backslash. Now, `ctx->cp` points to the escaped character.
+        ctx->cp++;
       }
 
       // Add the character to the buffer.
-      catbuf[catbuf_idx] = *cp;
-      catbuf_idx++;
+      ctx->catbuf[ctx->catbuf_idx] = *ctx->cp;
+      ctx->catbuf_idx++;
 
       // Now, to see if we need to change state, we peek at the next character.
 
       // If the next character is a quote, then we will still be in the same
       // word, but at the start of a quoted string.
-      if (is_quote(cp + 1)) {
-        state = SH_STATE_QUOTED;
+      if (is_quote(ctx->cp + 1)) {
+        ctx->state = SH_STATE_QUOTED;
         continue;
       }
 
       // If the current character is the last in the word, then we create the
       // token.
-      if (is_word_boundary(cp + 1)) {
+      if (is_word_boundary(ctx->cp + 1)) {
         token.type = SH_TOKEN_WORD;
 
         // We need to dynamically allocate memory this time.
-        token.text = malloc(catbuf_idx + 1);
-        strncpy(token.text, catbuf, catbuf_idx);
-        token.text[catbuf_idx] = '\0';
+        token.text = malloc(ctx->catbuf_idx + 1);
+        strncpy(token.text, ctx->catbuf, ctx->catbuf_idx);
+        token.text[ctx->catbuf_idx] = '\0';
 
-        tokens_out[token_idx] = token;
-        token_idx++;
+        *token_out = token;
 
-        state = SH_STATE_DULL;
-        catbuf_idx = 0; // Reset for future words.
-        continue;
+        ctx->state = SH_STATE_DULL;
+        ctx->catbuf_idx = 0; // Reset for future words.
+        ctx->cp++; // Need to manually increment since we are skipping the
+                   // loop's increment.
+        return SH_LEX_ONGOING;
       }
     }
   }
 
-  if (state == SH_STATE_QUOTED) {
-    return -1;
+  if (ctx->state == SH_STATE_QUOTED) {
+    return SH_LEX_UNTERMINATED_QUOTE;
   }
 
-  return token_idx;
+  return SH_LEX_END;
 }
 
 int lex_simple_special(char const *cp, struct sh_token *token_out) {

@@ -42,21 +42,21 @@ int main() {
     if (strcmp(line, "exit") == 0) {
       cont = false;
     } else {
-      // The upper bound on the number of tokens is the number of
-      // characters in the line. Most of the time, we'll be wasting
-      // a bit of memory, but the amount wasted is trivial.
-      struct sh_token tokens[line_len];
-      ssize_t num_tokens = lex(line, tokens, line_len);
+      struct sh_lex_context *ctx = init_lex_context(line);
 
-      if (num_tokens < 0) {
-        printf("Error!\n");
-      } else {
-        printf("Number of tokens: %lu\n", num_tokens);
+      struct sh_token token;
+
+      enum sh_lex_result result;
+      while ((result = lex(ctx, &token)) == SH_LEX_ONGOING) {
         // FIXME: This is just for verification. Remove this later!
-        for (size_t idx = 0; idx < num_tokens; idx++) {
-          printf("Token %lu: %u %s\n", idx, tokens[idx].type, tokens[idx].text);
-        }
+        printf("Token: %u %s\n", token.type, token.text);
       }
+
+      if (result == SH_LEX_UNTERMINATED_QUOTE) {
+        printf("Error: unterminated quote\n");
+      }
+
+      destroy_lex_context(ctx);
     }
 
     // `getline` uses dynamic allocation, so we need to free the line.
