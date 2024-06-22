@@ -175,6 +175,12 @@ ssize_t lex(char const *input, struct sh_token tokens_out[],
       state = SH_STATE_UNQUOTED;
       break;
     case SH_STATE_UNQUOTED:
+      // Handle escape sequences.
+      if (*cp == '\\') {
+        // Skip the backslash. Now, `cp` points to the escaped character.
+        cp++;
+      }
+
       // Add the character to the buffer.
       catbuf[catbuf_idx] = *cp;
       catbuf_idx++;
