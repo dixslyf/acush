@@ -71,6 +71,10 @@ struct sh_lex_context {
   size_t catbuf_capacity;
   size_t catbuf_idx;
   char *catbuf;
+
+  // Keep track of the last token.
+  bool has_last_token;
+  struct sh_token last_token;
 };
 
 struct sh_lex_context *init_lex_context(char const *input) {
@@ -108,6 +112,8 @@ struct sh_lex_context *init_lex_context(char const *input) {
     return NULL;
   }
 
+  ctx.has_last_token = false;
+
   *ctx_out = ctx;
   return ctx_out;
 }
@@ -123,7 +129,6 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
     switch (ctx->state) {
     case SH_STATE_DULL:
       // Peek at the next character to see if we need to change state.
-
       if (is_quote(ctx->cp + 1)) {
         // Start of quoted section of a word.
         ctx->state = SH_STATE_QUOTED;
@@ -132,20 +137,21 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
         ctx->state = SH_STATE_UNQUOTED;
       }
 
-      // Try lexing simple special tokens: & ; ! | < > 2>
-      if (lex_simple_special(ctx->cp, &token) == 0) {
+      // Try lexing simple special tokens: & ; ! | < > 2>. However, if the last
+      // token was 2>, then don't try lexing the >.
+      if (!(ctx->has_last_token &&
+            ctx->last_token.type == SH_TOKEN_2_ANGLE_BRACKET_R) &&
+          lex_simple_special(ctx->cp, &token) == 0) {
         *token_out = token;
-        if (token.type == SH_TOKEN_2_ANGLE_BRACKET_R) {
-          ctx->cp++;
-        }
         ctx->cp++; // Need to manually increment since we are skipping the
                    // loop's increment.
+        ctx->has_last_token = true;
+        ctx->last_token = token;
         return SH_LEX_ONGOING;
       }
 
-      // At this point, the character must be one of the whitespace delimiters.
-      // Since we skip them, do nothing.
-      assert(is_ws_delimiter(ctx->cp));
+      // At this point, the character is either one of the whitespace delimiters
+      // or the > from 2>. In either case, we skip them.
       break;
     case SH_STATE_QUOTED:
       // The first time we enter this state, `quote_start` should be `NULL` and
@@ -210,6 +216,10 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
 
           ctx->cp++; // Need to manually increment since we are skipping the
                      // loop's increment.
+
+          ctx->has_last_token = true;
+          ctx->last_token = token;
+
           return SH_LEX_ONGOING;
         }
       }
@@ -255,6 +265,8 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
         ctx->catbuf_idx = 0; // Reset for future words.
         ctx->cp++; // Need to manually increment since we are skipping the
                    // loop's increment.
+        ctx->has_last_token = true;
+        ctx->last_token = token;
         return SH_LEX_ONGOING;
       }
     }
