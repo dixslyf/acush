@@ -81,6 +81,9 @@ ssize_t lex(char const *input, struct sh_token tokens_out[],
       if (lex_simple_special(cp, &token) == 0) {
         tokens_out[token_idx] = token;
         token_idx++;
+        if (token.type == SH_TOKEN_2_ANGLE_BRACKET_R) {
+          cp++;
+        }
         continue;
       }
 
