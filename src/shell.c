@@ -50,6 +50,7 @@ int main() {
       while ((result = lex(ctx, &token)) == SH_LEX_ONGOING) {
         // FIXME: This is just for verification. Remove this later!
         printf("Token: %u %s\n", token.type, token.text);
+        destroy_token(&token);
       }
 
       if (result == SH_LEX_UNTERMINATED_QUOTE) {

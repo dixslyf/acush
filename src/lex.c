@@ -267,6 +267,15 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
   return SH_LEX_END;
 }
 
+void destroy_token(struct sh_token *token) {
+  // Only the `text` for `SH_TOKEN_WORDS` are dynamically allocated.
+  // Other token types use static allocation.
+  if (token->type == SH_TOKEN_WORD) {
+    free(token->text);
+    token->text = NULL;
+  }
+}
+
 int lex_simple_special(char const *cp, struct sh_token *token_out) {
   struct sh_token token;
   switch (*cp) {

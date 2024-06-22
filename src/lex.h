@@ -59,3 +59,11 @@ void destroy_lex_context(struct sh_lex_context *ctx);
  * For the return value, see `enum sh_lex_result`.
  */
 enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out);
+
+/**
+ * Destroys a token.
+ *
+ * This function should be called on all tokens returned by
+ * `lex()` once they are no longer needed.
+ */
+void destroy_token(struct sh_token *token);
