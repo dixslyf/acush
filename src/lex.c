@@ -149,18 +149,23 @@ ssize_t lex(char const *input, struct sh_token tokens_out[],
       // If the current character is the last in the current word, then we
       // are done with the current word and can now create the token for it.
       if (is_word_boundary(cp + 1)) {
-        token.type = SH_TOKEN_WORD;
+        // However, if we have an empty pair of quotes ("", ''), then don't
+        // create the token.
+        if (catbuf_idx != 0) {
+          token.type = SH_TOKEN_WORD;
 
-        // We need to dynamically allocate memory this time.
-        token.text = malloc(catbuf_idx + 1);
-        strncpy(token.text, catbuf, catbuf_idx);
-        token.text[catbuf_idx] = '\0';
+          // We need to dynamically allocate memory this time.
+          token.text = malloc(catbuf_idx + 1);
+          strncpy(token.text, catbuf, catbuf_idx);
+          token.text[catbuf_idx] = '\0';
 
-        tokens_out[token_idx] = token;
-        token_idx++;
+          tokens_out[token_idx] = token;
+          token_idx++;
+
+          catbuf_idx = 0; // Reset for future words.
+        }
 
         state = SH_STATE_DULL;
-        catbuf_idx = 0; // Reset for future words.
         continue;
       }
 
