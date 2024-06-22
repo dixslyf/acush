@@ -1,16 +1,18 @@
 #include <stdlib.h>
 
+enum sh_token_type {
+  SH_TOKEN_AMP,               // &
+  SH_TOKEN_SEMICOLON,         // ;
+  SH_TOKEN_EXCLAM,            // !
+  SH_TOKEN_PIPE,              // |
+  SH_TOKEN_ANGLE_BRACKET_L,   // <
+  SH_TOKEN_ANGLE_BRACKET_R,   // >
+  SH_TOKEN_2_ANGLE_BRACKET_R, // 2>
+  SH_TOKEN_WORD,              // Everything else.
+};
+
 struct sh_token {
-  enum {
-    SH_TOKEN_AMP,               // &
-    SH_TOKEN_SEMICOLON,         // ;
-    SH_TOKEN_EXCLAM,            // !
-    SH_TOKEN_PIPE,              // |
-    SH_TOKEN_ANGLE_BRACKET_L,   // <
-    SH_TOKEN_ANGLE_BRACKET_R,   // >
-    SH_TOKEN_2_ANGLE_BRACKET_R, // 2>
-    SH_TOKEN_WORD,              // Everything else.
-  } type;
+  enum sh_token_type type;
   char *text;
 };
 

@@ -1,20 +1,61 @@
-#include <stdlib.h>
 #include <string.h>
 
 #include "assertions.h"
 #include "lex.h"
 
+#define INPUT_BUFSIZE 128
+
 int main() {
-  char input[56] = "a bc\tdef\nghij\vklmno\fpqrstu\rvwxyzab";
-  size_t tokens_size = 7;
-  char *tokens[tokens_size];
-  size_t token_count = lex(input, tokens, tokens_size);
-  ASSERT_EQ(token_count, tokens_size);
-  ASSERT_EQ(strcmp(tokens[0], "a"), 0);
-  ASSERT_EQ(strcmp(tokens[1], "bc"), 0);
-  ASSERT_EQ(strcmp(tokens[2], "def"), 0);
-  ASSERT_EQ(strcmp(tokens[3], "ghij"), 0);
-  ASSERT_EQ(strcmp(tokens[4], "klmno"), 0);
-  ASSERT_EQ(strcmp(tokens[5], "pqrstu"), 0);
-  ASSERT_EQ(strcmp(tokens[6], "vwxyzab"), 0);
+  char *inputs[] = {
+      "&;!|<>2>foobar123\"hello\"'world'\"\"''",
+      "& \n\t\f\r\v; \n\t\f\r\v! \n\t\f\r\v| \n\t\f\r\v< \n\t\f\r\v> "
+      "\n\t\f\r\v2> \n\t\f\r\vfoobar123\"hello\"'world'\"\"''"};
+
+  for (size_t idx = 0; idx < 2; idx++) {
+    struct sh_lex_context *ctx = init_lex_context(inputs[idx]);
+    struct sh_token token;
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_AMP);
+    ASSERT_EQ(strcmp(token.text, "&"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_SEMICOLON);
+    ASSERT_EQ(strcmp(token.text, ";"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_EXCLAM);
+    ASSERT_EQ(strcmp(token.text, "!"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_PIPE);
+    ASSERT_EQ(strcmp(token.text, "|"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_ANGLE_BRACKET_L);
+    ASSERT_EQ(strcmp(token.text, "<"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_ANGLE_BRACKET_R);
+    ASSERT_EQ(strcmp(token.text, ">"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_2_ANGLE_BRACKET_R);
+    ASSERT_EQ(strcmp(token.text, "2>"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+    ASSERT_EQ(token.type, SH_TOKEN_WORD);
+    ASSERT_EQ(strcmp(token.text, "foobar123helloworld"), 0);
+    destroy_token(&token);
+
+    ASSERT_EQ(lex(ctx, &token), SH_LEX_END);
+    destroy_lex_context(ctx);
+  }
 }

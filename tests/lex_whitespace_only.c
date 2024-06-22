@@ -1,11 +1,9 @@
-#include <stdlib.h>
-
 #include "assertions.h"
 #include "lex.h"
 
 int main() {
-  char input[7] = TOKEN_SEPARATORS;
-  size_t const tokens_size = 1;
-  char *tokens[tokens_size];
-  ASSERT_EQ(lex("", tokens, tokens_size), 0);
+  struct sh_lex_context *ctx = init_lex_context(" \n\t\f\r\v");
+  struct sh_token token;
+  ASSERT_EQ(lex(ctx, &token), SH_LEX_END);
+  destroy_lex_context(ctx);
 }

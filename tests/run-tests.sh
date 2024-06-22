@@ -9,5 +9,4 @@ for test_exe in "$@"; do
     echo "FAIL $(basename "$test_exe") (exit code: $exit_code)"
   fi
   echo "$test_output"
-  echo
 done
