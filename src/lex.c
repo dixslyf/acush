@@ -84,7 +84,6 @@ ssize_t lex(char const *input, struct sh_token tokens_out[],
         if (token.type == SH_TOKEN_2_ANGLE_BRACKET_R) {
           cp++;
         }
-        continue;
       }
 
       // Peek at the next character to see if we need to change state.
