@@ -1,6 +1,18 @@
 #include <stdlib.h>
 
-#define TOKEN_SEPARATORS " \n\t\f\r\v"
+struct sh_token {
+  enum {
+    SH_TOKEN_AMP,               // &
+    SH_TOKEN_SEMICOLON,         // ;
+    SH_TOKEN_EXCLAM,            // !
+    SH_TOKEN_PIPE,              // |
+    SH_TOKEN_ANGLE_BRACKET_L,   // <
+    SH_TOKEN_ANGLE_BRACKET_R,   // >
+    SH_TOKEN_2_ANGLE_BRACKET_R, // 2>
+    SH_TOKEN_WORD,              // Everything else.
+  } type;
+  char *text;
+};
 
 /**
  * Parses the given input string into a sequence of tokens
@@ -18,4 +30,4 @@
  * @param tokens_out an array of strings to write the output tokens to
  * @param max_tokens the maximum number of tokens to write to `tokens_out`
  */
-size_t lex(char *input, char *tokens_out[], size_t max_tokens);
+ssize_t lex(char const *input, struct sh_token tokens_out[], size_t max_tokens);

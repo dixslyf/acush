@@ -45,12 +45,17 @@ int main() {
       // The upper bound on the number of tokens is the number of
       // characters in the line. Most of the time, we'll be wasting
       // a bit of memory, but the amount wasted is trivial.
-      char *tokens[line_len];
-      int num_tokens = lex(line, tokens, line_len);
+      struct sh_token tokens[line_len];
+      ssize_t num_tokens = lex(line, tokens, line_len);
 
-      // FIXME: This is just for verification. Remove this later!
-      for (size_t idx = 0; idx < num_tokens; idx++) {
-        printf("Token %lu: %s\n", idx, tokens[idx]);
+      if (num_tokens < 0) {
+        printf("Error!\n");
+      } else {
+        printf("Number of tokens: %lu\n", num_tokens);
+        // FIXME: This is just for verification. Remove this later!
+        for (size_t idx = 0; idx < num_tokens; idx++) {
+          printf("Token %lu: %u %s\n", idx, tokens[idx].type, tokens[idx].text);
+        }
       }
     }
 
