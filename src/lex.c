@@ -124,13 +124,11 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
     case SH_STATE_DULL:
       // Peek at the next character to see if we need to change state.
 
-      // Start of quoted section of a word.
       if (is_quote(ctx->cp + 1)) {
+        // Start of quoted section of a word.
         ctx->state = SH_STATE_QUOTED;
-      }
-
-      // Start of unquoted section of a word.
-      if (!is_word_boundary(ctx->cp + 1)) {
+      } else if (!is_word_boundary(ctx->cp + 1)) {
+        // Start of unquoted section of a word.
         ctx->state = SH_STATE_UNQUOTED;
       }
 
@@ -147,6 +145,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
 
       // At this point, the character must be one of the whitespace delimiters.
       // Since we skip them, do nothing.
+      assert(is_ws_delimiter(ctx->cp));
       break;
     case SH_STATE_QUOTED:
       // The first time we enter this state, `quote_start` should be `NULL` and
