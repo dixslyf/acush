@@ -42,7 +42,7 @@ bool is_simple_special(char const *cp);
  * `*cp` is a word boundary if any of the following evaluate to `true`:
  *   - `is_ws_delimiter(cp)`
  *   - `is_simple_special(cp)`
- *   - `*(cp) == '\0'`
+ *   - `*cp == '\0'`
  */
 bool is_word_boundary(char const *cp);
 
@@ -282,5 +282,5 @@ bool is_simple_special(char const *cp) {
 }
 
 bool is_word_boundary(char const *cp) {
-  return is_ws_delimiter(cp) || is_simple_special(cp) || *(cp) == '\0';
+  return is_ws_delimiter(cp) || is_simple_special(cp) || *cp == '\0';
 }
