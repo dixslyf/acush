@@ -19,3 +19,9 @@ To clean up build artifacts:
 ```sh
 make clean
 ```
+
+To run unit tests:
+
+```sh
+make test
+```
