@@ -20,28 +20,34 @@ enum sh_token_type const types[] = {
 };
 
 int main() {
-  for (size_t idx = 0; idx < input_count; idx++) {
-    char input[INPUT_BUFSIZE];
-    size_t input_size = 0;
-    strncpy(input + input_size, WHITESPACE_DELIMITERS,
-            INPUT_BUFSIZE - input_size);
-    input_size += strlen(WHITESPACE_DELIMITERS);
-    strncpy(input + input_size, inputs[idx], INPUT_BUFSIZE - input_size);
-    input_size += strlen(inputs[idx]);
-    strncpy(input + input_size, WHITESPACE_DELIMITERS,
-            INPUT_BUFSIZE - input_size);
-    input_size += strlen(WHITESPACE_DELIMITERS);
-    input[input_size] = '\0';
+    for (size_t idx = 0; idx < input_count; idx++) {
+        char input[INPUT_BUFSIZE];
+        size_t input_size = 0;
+        strncpy(
+            input + input_size,
+            WHITESPACE_DELIMITERS,
+            INPUT_BUFSIZE - input_size
+        );
+        input_size += strlen(WHITESPACE_DELIMITERS);
+        strncpy(input + input_size, inputs[idx], INPUT_BUFSIZE - input_size);
+        input_size += strlen(inputs[idx]);
+        strncpy(
+            input + input_size,
+            WHITESPACE_DELIMITERS,
+            INPUT_BUFSIZE - input_size
+        );
+        input_size += strlen(WHITESPACE_DELIMITERS);
+        input[input_size] = '\0';
 
-    struct sh_lex_context *ctx = init_lex_context(input);
-    struct sh_token token;
-    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
-    ASSERT_EQ(token.type, types[idx]);
-    ASSERT_EQ(strcmp(token.text, inputs[idx]), 0);
-    destroy_token(&token);
+        struct sh_lex_context *ctx = init_lex_context(input);
+        struct sh_token token;
+        ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+        ASSERT_EQ(token.type, types[idx]);
+        ASSERT_EQ(strcmp(token.text, inputs[idx]), 0);
+        destroy_token(&token);
 
-    ASSERT_EQ(lex(ctx, &token), SH_LEX_END);
-    destroy_lex_context(ctx);
-    // We don't want `lex` to be returning empty strings.
-  }
+        ASSERT_EQ(lex(ctx, &token), SH_LEX_END);
+        destroy_lex_context(ctx);
+        // We don't want `lex` to be returning empty strings.
+    }
 }

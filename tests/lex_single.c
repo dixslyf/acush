@@ -17,16 +17,16 @@ enum sh_token_type const types[] = {
 };
 
 int main() {
-  for (size_t idx = 0; idx < input_count; idx++) {
-    struct sh_lex_context *ctx = init_lex_context(inputs[idx]);
-    struct sh_token token;
-    ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
-    ASSERT_EQ(token.type, types[idx]);
-    ASSERT_EQ(strcmp(token.text, inputs[idx]), 0);
-    destroy_token(&token);
+    for (size_t idx = 0; idx < input_count; idx++) {
+        struct sh_lex_context *ctx = init_lex_context(inputs[idx]);
+        struct sh_token token;
+        ASSERT_EQ(lex(ctx, &token), SH_LEX_ONGOING);
+        ASSERT_EQ(token.type, types[idx]);
+        ASSERT_EQ(strcmp(token.text, inputs[idx]), 0);
+        destroy_token(&token);
 
-    ASSERT_EQ(lex(ctx, &token), SH_LEX_END);
+        ASSERT_EQ(lex(ctx, &token), SH_LEX_END);
 
-    destroy_lex_context(ctx);
-  }
+        destroy_lex_context(ctx);
+    }
 }
