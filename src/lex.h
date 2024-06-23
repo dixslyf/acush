@@ -1,3 +1,6 @@
+#ifndef LEX_H
+#define LEX_H
+
 #include <stdlib.h>
 
 enum sh_token_type {
@@ -69,3 +72,5 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out);
  * `lex()` once they are no longer needed.
  */
 void destroy_token(struct sh_token *token);
+
+#endif
