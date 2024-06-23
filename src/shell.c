@@ -5,6 +5,7 @@
 
 #include "lex.h"
 #include "parse.h"
+#include "run.h"
 
 int main() {
     bool cont = true;
@@ -71,6 +72,7 @@ int main() {
                     printf("Failed to parse command line\n");
                 } else {
                     display_ast(ast);
+                    run(ast);
                     destroy_ast_node(ast);
                 }
             }
