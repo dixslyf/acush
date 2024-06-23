@@ -11,7 +11,7 @@ make
 After building, run the shell with:
 
 ```sh
-./shell
+build/shell
 ```
 
 To clean up build artifacts:
