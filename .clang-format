@@ -1,0 +1,26 @@
+Language: Cpp
+IndentWidth: 4
+AlignAfterOpenBracket: BlockIndent
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Custom
+BreakBeforeBinaryOperators: NonAssignment
+BraceWrapping:
+  AfterControlStatement: MultiLine
+SpaceBeforeCpp11BracedList: true
+ColumnLimit: 80
+PenaltyBreakAssignment: 300
+QualifierAlignment: Custom
+QualifierOrder:
+  [
+    "inline",
+    "static",
+    "friend",
+    "constexpr",
+    "volatile",
+    "restrict",
+    "type",
+    "const",
+  ]

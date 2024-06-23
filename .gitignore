@@ -1,2 +1,5 @@
 .direnv
 build
+
+# clangd and bear
+compile_commands.json

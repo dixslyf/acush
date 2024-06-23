@@ -14,6 +14,8 @@
           gcc
           gnumake
           valgrind
+          clang-tools
+          bear
         ];
       };
     });
