@@ -7,6 +7,7 @@
 struct sh_ast;
 
 enum sh_ast_type {
+  SH_AST_ROOT,
   SH_AST_COMMAND_LINE,
   SH_AST_JOB,
   SH_AST_COMMAND,
@@ -28,6 +29,10 @@ enum sh_redirect_type {
 };
 
 union sh_ast_data {
+  struct {
+    struct sh_ast *command_line;
+  } root;
+
   struct {
     enum { SH_COMMAND_REPEAT, SH_COMMAND_JOBS } type;
     union {

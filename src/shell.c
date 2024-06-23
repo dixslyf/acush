@@ -63,7 +63,7 @@ int main() {
       } else {
         struct sh_ast *ast;
         enum sh_parse_result parse_result = parse(tokens, token_count, &ast);
-        if (ast == NULL) {
+        if (parse_result != SH_PARSE_SUCCESS) {
           printf("Failed to parse command line\n");
         } else {
           display_ast(ast);

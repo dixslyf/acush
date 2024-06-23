@@ -26,8 +26,20 @@ enum sh_parse_result parse(struct sh_token tokens[], size_t token_count,
   struct sh_parse_context ctx = {
       .tokens = tokens, .token_count = token_count, .token_idx = 0};
 
-  struct sh_ast *root;
-  enum sh_parse_result result = parse_command_line(&ctx, &root);
+  struct sh_ast *root_node = init_ast_node(
+      SH_AST_ROOT, (union sh_ast_data){.root.command_line = NULL});
+  if (root_node == NULL) {
+    return SH_PARSE_MEMORY_ERROR;
+  }
+
+  // No tokens, so an empty root.
+  if (ctx.token_count == 0) {
+    *ast_out = root_node;
+    return SH_PARSE_SUCCESS;
+  }
+
+  struct sh_ast *command_line_node;
+  enum sh_parse_result result = parse_command_line(&ctx, &command_line_node);
   if (result != SH_PARSE_SUCCESS) {
     return result;
   }
@@ -36,7 +48,8 @@ enum sh_parse_result parse(struct sh_token tokens[], size_t token_count,
     return SH_PARSE_UNEXPECTED_TOKENS;
   }
 
-  *ast_out = root;
+  root_node->data.root.command_line = command_line_node;
+  *ast_out = root_node;
   return SH_PARSE_SUCCESS;
 }
 
@@ -52,6 +65,11 @@ struct sh_ast *init_ast_node(enum sh_ast_type type, union sh_ast_data data) {
 
 void destroy_ast_node(struct sh_ast *ast) {
   switch (ast->type) {
+  case SH_AST_ROOT:
+    if (ast->data.root.command_line != NULL) {
+      destroy_ast_node(ast->data.root.command_line);
+    }
+    break;
   case SH_AST_COMMAND_LINE:
     for (size_t idx = 0; idx < ast->data.command_line.job_count; idx++) {
       destroy_ast_node(ast->data.command_line.jobs[idx].ast_node);
@@ -75,9 +93,8 @@ void destroy_ast_node(struct sh_ast *ast) {
 enum sh_parse_result parse_command_line(struct sh_parse_context *ctx,
                                         struct sh_ast **ast_out) {
   // No tokens to parse.
-  // However, unlike the other parse function, this is not considered an error.
   if (ctx->token_idx >= ctx->token_count) {
-    return SH_PARSE_SUCCESS;
+    return SH_PARSE_UNEXPECTED_END;
   }
 
   // Try parsing history (e.g., `!foobar`).
@@ -351,37 +368,43 @@ enum sh_parse_result parse_simple_command(struct sh_parse_context *ctx,
 
 void display_ast(struct sh_ast *ast) {
   switch (ast->type) {
+  case SH_AST_ROOT:
+    printf("ROOT\n");
+    if (ast->data.root.command_line != NULL) {
+      display_ast(ast->data.root.command_line);
+    }
+    break;
   case SH_AST_COMMAND_LINE:
-    printf("COMMAND_LINE\n");
+    printf("  COMMAND_LINE\n");
     if (ast->data.command_line.type == SH_COMMAND_REPEAT) {
-      printf("  repeat: %s\n", ast->data.command_line.repeat);
+      printf("    repeat: %s\n", ast->data.command_line.repeat);
     } else { // SH_COMMAND_JOBS
-      printf("  job count: %lu\n", ast->data.command_line.job_count);
+      printf("    job count: %lu\n", ast->data.command_line.job_count);
       for (size_t idx; idx < ast->data.command_line.job_count; idx++) {
-        printf("  %s ", ast->data.command_line.jobs[idx].job_type == SH_JOB_FG
-                            ? "FOREGROUND"
-                            : "BACKGROUND");
+        printf("    %s ", ast->data.command_line.jobs[idx].job_type == SH_JOB_FG
+                              ? "FOREGROUND"
+                              : "BACKGROUND");
         display_ast(ast->data.command_line.jobs[idx].ast_node);
       }
     }
     break;
   case SH_AST_JOB:
     printf("JOB\n");
-    printf("    command count: %lu\n", ast->data.job.cmd_count);
+    printf("      command count: %lu\n", ast->data.job.cmd_count);
     for (size_t idx = 0; idx < ast->data.job.cmd_count; idx++) {
       display_ast(ast->data.job.piped_cmds[idx]);
     }
     break;
   case SH_AST_COMMAND:
-    printf("    COMMAND:\n");
+    printf("      COMMAND:\n");
     display_ast(ast->data.command.simple_command);
-    printf("      redirect type: %d\n", ast->data.command.redirect_type);
-    printf("      redirect file: %s\n", ast->data.command.redirect_file);
+    printf("        redirect type: %d\n", ast->data.command.redirect_type);
+    printf("        redirect file: %s\n", ast->data.command.redirect_file);
     break;
   case SH_AST_SIMPLE_COMMAND:
-    printf("      SIMPLE COMMAND\n");
-    printf("        argc: %lu\n", ast->data.simple_command.argc);
-    printf("        argv: ");
+    printf("        SIMPLE COMMAND\n");
+    printf("          argc: %lu\n", ast->data.simple_command.argc);
+    printf("          argv: ");
     for (size_t idx = 0; idx < ast->data.simple_command.argc; idx++) {
       printf("%s ", ast->data.simple_command.argv[idx]);
     };
