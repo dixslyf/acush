@@ -286,16 +286,23 @@ enum sh_parse_result parse_command(struct sh_parse_context *ctx,
     return SH_PARSE_MEMORY_ERROR;
   }
 
-  struct sh_token *token = &ctx->tokens[ctx->token_idx];
-  if (!(token->type == SH_TOKEN_ANGLE_BRACKET_L ||
-        token->type == SH_TOKEN_ANGLE_BRACKET_R ||
-        token->type == SH_TOKEN_2_ANGLE_BRACKET_R)) {
+  // At this point, the `<`, `>` or `2>` are optional.
+
+  // If there are no tokens remaining, or there are and the next is one of `<`,
+  // `>` or `2>`, then there is no redirection.
+  if (ctx->token_idx >= ctx->token_count ||
+      !(ctx->tokens[ctx->token_idx].type == SH_TOKEN_ANGLE_BRACKET_L ||
+        ctx->tokens[ctx->token_idx].type == SH_TOKEN_ANGLE_BRACKET_R ||
+        ctx->tokens[ctx->token_idx].type == SH_TOKEN_2_ANGLE_BRACKET_R)) {
     *ast_out = node;
     return SH_PARSE_SUCCESS;
   }
 
-  if (ctx->tokens[ctx->token_idx + 1].type == SH_TOKEN_WORD) {
-    switch (token->type) {
+  // The next token is one of `<`, `>` or `2>`, so we need to check the token
+  // after that to get the redirect file path.
+  if (ctx->token_idx + 1 < ctx->token_count &&
+      ctx->tokens[ctx->token_idx + 1].type == SH_TOKEN_WORD) {
+    switch (ctx->tokens[ctx->token_idx].type) {
     case SH_TOKEN_ANGLE_BRACKET_L:
       node->data.command.redirect_type = SH_REDIRECT_STDIN;
       break;
@@ -315,6 +322,8 @@ enum sh_parse_result parse_command(struct sh_parse_context *ctx,
     return SH_PARSE_SUCCESS;
   }
 
+  // If we've reached this point, that means there was a `<`, `>` or `2>` token,
+  // but no redirect file path.
   return SH_PARSE_COMMAND_FAIL;
 }
 
