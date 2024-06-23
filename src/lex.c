@@ -62,6 +62,9 @@ struct sh_lex_context {
     // `state` keeps track of the FSM's state.
     enum sh_state state;
 
+    // Store the original input.
+    char const *input;
+
     // Keeps track of the current character being processed in the input
     // string.
     char const *cp;
@@ -73,10 +76,6 @@ struct sh_lex_context {
     size_t catbuf_capacity;
     size_t catbuf_idx;
     char *catbuf;
-
-    // Keep track of the last token.
-    bool has_last_token;
-    struct sh_token last_token;
 };
 
 struct sh_lex_context *init_lex_context(char const *input) {
@@ -92,6 +91,7 @@ struct sh_lex_context *init_lex_context(char const *input) {
         ctx.state = SH_STATE_UNQUOTED;
     }
 
+    ctx.input = input;
     ctx.cp = input;
 
     ctx.quote_start = NULL;
@@ -113,8 +113,6 @@ struct sh_lex_context *init_lex_context(char const *input) {
         free(ctx.catbuf);
         return NULL;
     }
-
-    ctx.has_last_token = false;
 
     *ctx_out = ctx;
     return ctx_out;
@@ -141,17 +139,14 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
             }
 
             // Try lexing simple special tokens: & ; ! | < > 2>.
-            // However, if the last token was 2>, then don't try lexing
-            // the >.
-            if (!(ctx->has_last_token
-                  && ctx->last_token.type == SH_TOKEN_2_ANGLE_BRACKET_R)
+            // However, if we just lexed 2>, then don't try lexing the >.
+            if (!(ctx->cp != ctx->input && *(ctx->cp - 1) == '2'
+                  && *(ctx->cp) == '>')
                 && lex_simple_special(ctx->cp, &token) == 0)
             {
                 *token_out = token;
                 ctx->cp++; // Need to manually increment since we
                            // are skipping the loop's increment.
-                ctx->has_last_token = true;
-                ctx->last_token = token;
                 return SH_LEX_ONGOING;
             }
 
@@ -229,9 +224,6 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
                                // since we are skipping the
                                // loop's increment.
 
-                    ctx->has_last_token = true;
-                    ctx->last_token = token;
-
                     return SH_LEX_ONGOING;
                 }
             }
@@ -281,8 +273,6 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out) {
                 ctx->catbuf_idx = 0; // Reset for future words.
                 ctx->cp++;           // Need to manually increment since we
                                      // are skipping the loop's increment.
-                ctx->has_last_token = true;
-                ctx->last_token = token;
                 return SH_LEX_ONGOING;
             }
         }
