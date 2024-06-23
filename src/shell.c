@@ -1,4 +1,5 @@
 #include "lex.h"
+#include "parse.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -44,19 +45,34 @@ int main() {
     } else {
       struct sh_lex_context *ctx = init_lex_context(line);
 
+      // The worst case scenario for the number of tokens is the number of
+      // characters in the line. We waste a bit of space, but the amount is
+      // trivial.
+      struct sh_token tokens[line_len];
+      size_t token_count = 0;
+
       struct sh_token token;
-
-      enum sh_lex_result result;
-      while ((result = lex(ctx, &token)) == SH_LEX_ONGOING) {
-        // FIXME: This is just for verification. Remove this later!
-        printf("Token: %u %s\n", token.type, token.text);
-        destroy_token(&token);
+      enum sh_lex_result lex_result;
+      while ((lex_result = lex(ctx, &token)) == SH_LEX_ONGOING) {
+        tokens[token_count] = token;
+        token_count++;
       }
 
-      if (result == SH_LEX_UNTERMINATED_QUOTE) {
+      if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
         printf("Error: unterminated quote\n");
+      } else {
+        struct sh_ast *ast;
+        enum sh_parse_result parse_result = parse(tokens, token_count, &ast);
+        if (ast == NULL) {
+          printf("Failed to parse command line\n");
+        } else {
+          display_ast(ast);
+          destroy_ast_node(ast);
+        }
       }
-
+      for (size_t idx = 0; idx < token_count; idx++) {
+        destroy_token(&tokens[idx]);
+      }
       destroy_lex_context(ctx);
     }
 
