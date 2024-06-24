@@ -6,30 +6,80 @@
 
 #include "lex.h"
 
+/** Contains context information for parsing. */
 struct sh_parse_context {
-    struct sh_token *tokens;
-    size_t token_count;
-    size_t token_idx;
+    struct sh_token *tokens; /**< Sequence of tokens. */
+    size_t token_count;      /**< Number of tokens in the sequence. */
+    size_t token_idx;        /**< Current index in the token sequence. */
 };
 
+/**
+ * Destroys a simple command AST node and frees associated memory.
+ *
+ * @param simple_cmd pointer to the simple command node to destroy
+ */
 void destroy_simple_cmd(struct sh_ast_simple_cmd *simple_cmd);
+
+/**
+ * Destroys a command AST node and frees associated memory.
+ *
+ * @param cmd pointer to the command node to destroy
+ */
 void destroy_cmd(struct sh_ast_cmd *cmd);
+
+/**
+ * Destroys a job AST node and frees associated memory.
+ *
+ * @param job pointer to the job node to destroy
+ */
 void destroy_job(struct sh_ast_job *job);
+
+/**
+ * Destroys a command line AST node and frees associated memory.
+ *
+ * @param cmd_line pointer to the command line node to destroy
+ */
 void destroy_cmd_line(struct sh_ast_cmd_line *cmd_line);
 
+/**
+ * Parses a command line AST node from the given token context.
+ *
+ * @param ctx pointer to the context
+ * @param out pointer to the command line AST node to write to
+ * @return the result of the parsing operation
+ */
 enum sh_parse_result
-parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *ast_out);
+parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *out);
 
+/**
+ * Parses a job AST node from the given token context.
+ *
+ * @param ctx pointer to the context
+ * @param out pointer to the job AST node to write to
+ * @return the result of the parsing operation
+ */
 enum sh_parse_result
-parse_job(struct sh_parse_context *ctx, struct sh_ast_job *ast_out);
+parse_job(struct sh_parse_context *ctx, struct sh_ast_job *out);
 
+/**
+ * Parses a command AST node from the given token context.
+ *
+ * @param ctx pointer to the context
+ * @param out pointer to the command AST node to write to
+ * @return the result of the parsing operation
+ */
 enum sh_parse_result
-parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *ast_out);
+parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *out);
 
-enum sh_parse_result parse_simple_cmd(
-    struct sh_parse_context *ctx,
-    struct sh_ast_simple_cmd *ast_out
-);
+/**
+ * Parses a simple command AST node from the given token context.
+ *
+ * @param ctx pointer to the context
+ * @param out pointer to the simple command AST node to write to
+ * @return the result of the parsing operation
+ */
+enum sh_parse_result
+parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out);
 
 enum sh_parse_result
 parse(struct sh_token tokens[], size_t token_count, struct sh_ast_root *out) {
@@ -399,9 +449,32 @@ parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out) {
     return SH_PARSE_SUCCESS;
 }
 
+/**
+ * Displays a command line AST node for debugging purposes.
+ *
+ * @param cmd_line pointer to the command line AST node to display
+ */
 void display_cmd_line(struct sh_ast_cmd_line *cmd_line);
+
+/**
+ * Displays the job AST node for debugging purposes.
+ *
+ * @param job pointer to the job AST node to display
+ */
 void display_job(struct sh_ast_job *job);
+
+/**
+ * Displays the command AST node for debugging purposes.
+ *
+ * @param cmd pointer to the command AST node to display
+ */
 void display_cmd(struct sh_ast_cmd *cmd);
+
+/**
+ * Displays the simple command AST node for debugging purposes.
+ *
+ * @param simple_cmd pointer to the simple command AST node to display
+ */
 void display_simple_cmd(struct sh_ast_simple_cmd *simple_cmd);
 
 void display_ast(struct sh_ast_root *ast) {
