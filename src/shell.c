@@ -1,13 +1,28 @@
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "lex.h"
 #include "parse.h"
 #include "run.h"
 
+/** Sets up signal handling. */
+void setup_signals();
+
+/**
+ * Handler for `SIGCHLD` signal.
+ *
+ * This handler consumes background processes with `waitpid()` to make sure they
+ * do not become zombie processes.
+ */
+void handle_sigchld(int signo);
+
 int main() {
+    setup_signals();
+
     bool should_exit = false;
     int exit_code = EXIT_SUCCESS;
     while (!should_exit) {
@@ -92,3 +107,15 @@ int main() {
 
     return exit_code;
 }
+
+void setup_signals() {
+    struct sigaction sigact_chld;
+    sigemptyset(&sigact_chld.sa_mask);
+    // Prevent `getline()` from getting interrupted.
+    // See `man sigaction` and search for `SA_RESTART`.
+    sigact_chld.sa_flags = SA_RESTART;
+    sigact_chld.sa_handler = handle_sigchld;
+    sigaction(SIGCHLD, &sigact_chld, NULL);
+}
+
+void handle_sigchld(int signo) { waitpid(-1, NULL, WNOHANG); }

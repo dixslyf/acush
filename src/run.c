@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "builtins.h"
+#include "parse.h"
 #include "run.h"
 
 void run_cmd_line(
@@ -14,14 +15,19 @@ void run_cmd_line(
 
 void run_job_desc(sh_run_result *result, struct sh_job_desc const *job_desc);
 
-void run_cmd(sh_run_result *result, struct sh_ast_cmd const *cmd);
+void run_cmd(
+    sh_run_result *result,
+    struct sh_ast_cmd const *cmd,
+    enum sh_job_type job_type
+);
 
 void run_simple_cmd(
     sh_run_result *result,
-    struct sh_ast_simple_cmd const *simple_cmd
+    struct sh_ast_simple_cmd const *simple_cmd,
+    enum sh_job_type job_type
 );
 
-pid_t spawn(size_t argc, char *argv[]);
+pid_t spawn(size_t argc, char *argv[], enum sh_job_type job_type);
 
 sh_run_result run(struct sh_ast_root const *root) {
     sh_run_result result = (sh_run_result) {
@@ -60,18 +66,23 @@ void run_job_desc(sh_run_result *result, struct sh_job_desc const *job_desc) {
     // TODO: piping
     struct sh_ast_job const *job = &job_desc->job;
     for (size_t idx = 0; idx < job->cmd_count; idx++) {
-        run_cmd(result, &job->piped_cmds[idx]);
+        run_cmd(result, &job->piped_cmds[idx], job_desc->type);
     }
 }
 
-void run_cmd(sh_run_result *result, struct sh_ast_cmd const *cmd) {
+void run_cmd(
+    sh_run_result *result,
+    struct sh_ast_cmd const *cmd,
+    enum sh_job_type job_type
+) {
     // TODO: redirection
-    run_simple_cmd(result, &cmd->simple_cmd);
+    run_simple_cmd(result, &cmd->simple_cmd, job_type);
 }
 
 void run_simple_cmd(
     sh_run_result *result,
-    struct sh_ast_simple_cmd const *simple_cmd
+    struct sh_ast_simple_cmd const *simple_cmd,
+    enum sh_job_type job_type
 ) {
     // Handle `exit` builtin.
     if (simple_cmd->argc >= 1 && strcmp(simple_cmd->argv[0], "exit") == 0) {
@@ -98,10 +109,10 @@ void run_simple_cmd(
     }
 
     // TODO: write error to `result` on error
-    pid_t pid = spawn(simple_cmd->argc, simple_cmd->argv);
+    pid_t pid = spawn(simple_cmd->argc, simple_cmd->argv, job_type);
 }
 
-pid_t spawn(size_t argc, char *argv[]) {
+pid_t spawn(size_t argc, char *argv[], enum sh_job_type job_type) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process.
@@ -111,8 +122,10 @@ pid_t spawn(size_t argc, char *argv[]) {
         // There is no point keeping the child process around, so we just exit
         // from the child process.
         exit(EXIT_FAILURE);
-    } else if (pid != -1) {
-        // Parent process.
+    } else if (pid != -1 && job_type == SH_JOB_FG) {
+        // Parent process. Only wait if the job is a foreground job.
+        // Background jobs are consumed by the signal handler for `SIGCHLD` so
+        // that they don't become zombie processes.
         int stat_loc;
         waitpid(pid, &stat_loc, 0);
         // TODO: what to do with `stat_loc`?

@@ -38,11 +38,14 @@ struct sh_ast_job {
     struct sh_ast_cmd *piped_cmds;
 };
 
+/** Indicates whether the job should run in the foreground (`;` or omitted) or
+ * background (`&`). */
+enum sh_job_type { SH_JOB_FG, SH_JOB_BG };
+
 /** Describes a job to be run in the foreground or background. */
 struct sh_job_desc {
-    /** Indicates whether the job should run in the foreground (`;` or omitted)
-     * or background (`&`). */
-    enum { SH_JOB_FG, SH_JOB_BG } type;
+    /** The type of the job. */
+    enum sh_job_type type;
 
     /** The described job. */
     struct sh_ast_job job;
