@@ -10,6 +10,7 @@ BreakBeforeBinaryOperators: NonAssignment
 BraceWrapping:
   AfterControlStatement: MultiLine
 SpaceBeforeCpp11BracedList: true
+SpaceAfterCStyleCast: true
 ColumnLimit: 80
 PenaltyBreakAssignment: 300
 QualifierAlignment: Custom
