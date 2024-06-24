@@ -1,8 +1,11 @@
-#include "run.h"
-
+#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include "builtins.h"
+#include "run.h"
 
 void run_cmd_line(
     sh_run_result *result,
@@ -17,6 +20,8 @@ void run_simple_cmd(
     sh_run_result *result,
     struct sh_ast_simple_cmd const *simple_cmd
 );
+
+pid_t spawn(size_t argc, char *argv[]);
 
 sh_run_result run(struct sh_ast_root const *root) {
     sh_run_result result = (sh_run_result) {
@@ -68,30 +73,50 @@ void run_simple_cmd(
     sh_run_result *result,
     struct sh_ast_simple_cmd const *simple_cmd
 ) {
-    pid_t pid = fork();
+    // Handle `exit` builtin.
+    if (simple_cmd->argc >= 1 && strcmp(simple_cmd->argv[0], "exit") == 0) {
+        sh_exit_result exit_result = run_exit(
+            simple_cmd->argc,
+            simple_cmd->argv
+        );
 
-    // Failed to fork.
-    // Let the caller decide what to do.
-    if (pid == -1) {
-        // TODO: write error to `result`
+        if (exit_result.type != SH_EXIT_SUCCESS) {
+            // TODO: write error to `result` on error
+            return;
+        }
+
+        // Don't overwrite the exit code for a previous exit call since that
+        // call should have priority.
+        if (result->should_exit) {
+            return;
+        }
+
+        assert(exit_result.type == SH_EXIT_SUCCESS);
+        result->should_exit = true;
+        result->exit_code = exit_result.exit_code;
         return;
     }
 
-    // Child process.
-    if (pid == 0) {
-        execvp(simple_cmd->argv[0], simple_cmd->argv);
+    // TODO: write error to `result` on error
+    pid_t pid = spawn(simple_cmd->argc, simple_cmd->argv);
+}
 
-        // TODO: write error to `result`
+pid_t spawn(size_t argc, char *argv[]) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process.
+        execvp(argv[0], argv);
 
         // This point is only reached if `execl` failed.
         // There is no point keeping the child process around, so we just exit
         // from the child process.
         exit(EXIT_FAILURE);
+    } else if (pid != -1) {
+        // Parent process.
+        int stat_loc;
+        waitpid(pid, &stat_loc, 0);
+        // TODO: what to do with `stat_loc`?
     }
 
-    // Parent process.
-    int stat_loc;
-    waitpid(pid, &stat_loc, 0);
-
-    // TODO: what to do with `stat_loc`?
+    return pid;
 }

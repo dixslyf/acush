@@ -8,8 +8,9 @@
 #include "run.h"
 
 int main() {
-    bool cont = true;
-    while (cont) {
+    bool should_exit = false;
+    int exit_code = EXIT_SUCCESS;
+    while (!should_exit) {
         printf("$ ");
 
         // Read user input command.
@@ -41,50 +42,53 @@ int main() {
             line[line_len - 1] = '\0';
         }
 
-        if (strcmp(line, "exit") == 0) {
-            cont = false;
-        } else {
-            struct sh_lex_context *ctx = init_lex_context(line);
+        struct sh_lex_context *ctx = init_lex_context(line);
 
-            // The worst case scenario for the number of tokens is the
-            // number of characters in the line. We waste a bit of
-            // space, but the amount is trivial.
-            struct sh_token tokens[line_len];
-            size_t token_count = 0;
+        // The worst case scenario for the number of tokens is the
+        // number of characters in the line. We waste a bit of
+        // space, but the amount is trivial.
+        struct sh_token tokens[line_len];
+        size_t token_count = 0;
 
-            struct sh_token token;
-            enum sh_lex_result lex_result;
-            while ((lex_result = lex(ctx, &token)) == SH_LEX_ONGOING) {
-                tokens[token_count] = token;
-                token_count++;
-            }
-
-            if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
-                printf("Error: unterminated quote\n");
-            } else {
-                struct sh_ast_root ast;
-                enum sh_parse_result parse_result = parse(
-                    tokens,
-                    token_count,
-                    &ast
-                );
-                if (parse_result != SH_PARSE_SUCCESS) {
-                    printf("Failed to parse command line\n");
-                } else {
-                    display_ast(stderr, &ast);
-                    sh_run_result result = run(&ast);
-                    destroy_ast(&ast);
-                }
-            }
-            for (size_t idx = 0; idx < token_count; idx++) {
-                destroy_token(&tokens[idx]);
-            }
-            destroy_lex_context(ctx);
+        struct sh_token token;
+        enum sh_lex_result lex_result;
+        while ((lex_result = lex(ctx, &token)) == SH_LEX_ONGOING) {
+            tokens[token_count] = token;
+            token_count++;
         }
+
+        if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
+            printf("Error: unterminated quote\n");
+        } else {
+            struct sh_ast_root ast;
+            enum sh_parse_result parse_result = parse(
+                tokens,
+                token_count,
+                &ast
+            );
+
+            if (parse_result != SH_PARSE_SUCCESS) {
+                printf("Failed to parse command line\n");
+            } else {
+                display_ast(stderr, &ast);
+                sh_run_result result = run(&ast);
+                if (result.should_exit) {
+                    should_exit = true;
+                    exit_code = result.exit_code;
+                }
+
+                destroy_ast(&ast);
+            }
+        }
+
+        for (size_t idx = 0; idx < token_count; idx++) {
+            destroy_token(&tokens[idx]);
+        }
+        destroy_lex_context(ctx);
 
         // `getline` uses dynamic allocation, so we need to free the line.
         free(line);
     }
 
-    return EXIT_SUCCESS;
+    return exit_code;
 }

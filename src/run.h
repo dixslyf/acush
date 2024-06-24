@@ -10,6 +10,8 @@ typedef struct sh_run_error sh_run_error;
 
 struct sh_run_result {
     bool should_exit;
+    int exit_code;
+
     size_t error_count;
     sh_run_error *errors;
 };
