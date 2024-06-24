@@ -62,7 +62,7 @@ int main() {
             if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
                 printf("Error: unterminated quote\n");
             } else {
-                struct sh_ast *ast;
+                struct sh_ast_root ast;
                 enum sh_parse_result parse_result = parse(
                     tokens,
                     token_count,
@@ -71,9 +71,9 @@ int main() {
                 if (parse_result != SH_PARSE_SUCCESS) {
                     printf("Failed to parse command line\n");
                 } else {
-                    display_ast(ast);
-                    run(ast);
-                    destroy_ast_node(ast);
+                    display_ast(&ast);
+                    run(&ast);
+                    destroy_ast(&ast);
                 }
             }
             for (size_t idx = 0; idx < token_count; idx++) {

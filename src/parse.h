@@ -5,67 +5,49 @@
 
 #include "lex.h"
 
-// Forward declaration.
-struct sh_ast;
-
-enum sh_ast_type {
-    SH_AST_ROOT,
-    SH_AST_COMMAND_LINE,
-    SH_AST_JOB,
-    SH_AST_COMMAND,
-    SH_AST_SIMPLE_COMMAND,
+struct sh_ast_simple_cmd {
+    size_t argc;
+    char **argv;
 };
 
-enum sh_job_type { SH_JOB_FG, SH_JOB_BG };
-
-struct sh_job {
-    enum sh_job_type job_type;
-    struct sh_ast *ast_node;
+struct sh_ast_cmd {
+    struct sh_ast_simple_cmd simple_cmd;
+    enum {
+        SH_REDIRECT_NONE,
+        SH_REDIRECT_STDOUT,
+        SH_REDIRECT_STDIN,
+        SH_REDIRECT_STDERR
+    } redirect_type;
+    char *redirect_file;
 };
 
-enum sh_redirect_type {
-    SH_REDIRECT_NONE,
-    SH_REDIRECT_STDOUT,
-    SH_REDIRECT_STDIN,
-    SH_REDIRECT_STDERR
+struct sh_ast_job {
+    struct sh_ast_cmd *piped_cmds;
+    size_t cmd_count;
 };
 
-union sh_ast_data {
-    struct {
-        struct sh_ast *command_line;
-    } root;
+struct sh_job_desc {
+    enum { SH_JOB_FG, SH_JOB_BG } type;
+    struct sh_ast_job job;
+};
 
-    struct {
-        enum { SH_COMMAND_REPEAT, SH_COMMAND_JOBS } type;
-        union {
-            struct {
-                struct sh_job *jobs;
-                size_t job_count;
-            };
-            char *repeat;
+struct sh_ast_cmd_line {
+    enum { SH_COMMAND_REPEAT, SH_COMMAND_JOBS } type;
+    union {
+        char *repeat;
+        struct {
+            size_t job_count;
+            struct sh_job_desc *job_descs;
         };
-    } command_line;
-
-    struct {
-        struct sh_ast **piped_cmds;
-        size_t cmd_count;
-    } job;
-
-    struct {
-        struct sh_ast *simple_command;
-        enum sh_redirect_type redirect_type;
-        char *redirect_file;
-    } command;
-
-    struct {
-        size_t argc;
-        char **argv;
-    } simple_command;
+    };
 };
 
-struct sh_ast {
-    enum sh_ast_type type;
-    union sh_ast_data data;
+struct sh_ast_root {
+    enum { SH_ROOT_EMPTY, SH_ROOT_NONEMPTY } emptiness;
+    union { // A union is technically not needed, but it's used here to
+            // semantically indicate that `cmd_line` can be uninitialised.
+        struct sh_ast_cmd_line cmd_line;
+    };
 };
 
 enum sh_parse_result {
@@ -88,10 +70,10 @@ enum sh_parse_result {
 };
 
 enum sh_parse_result
-parse(struct sh_token tokens[], size_t token_count, struct sh_ast **ast_out);
+parse(struct sh_token tokens[], size_t token_count, struct sh_ast_root *out);
 
-void destroy_ast_node(struct sh_ast *ast);
+void destroy_ast(struct sh_ast_root *ast_root);
 
-void display_ast(struct sh_ast *ast);
+void display_ast(struct sh_ast_root *ast_root);
 
 #endif

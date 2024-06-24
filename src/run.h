@@ -3,6 +3,6 @@
 
 #include <parse.h>
 
-int run(struct sh_ast const *root);
+int run(struct sh_ast_root const *root);
 
 #endif
