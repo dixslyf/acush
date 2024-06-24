@@ -374,7 +374,8 @@ parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out) {
 
     // Now, allocate memory for the arguments.
     size_t argc = end_idx - ctx->token_idx;
-    char **argv = malloc(sizeof(char *) * argc);
+    // + 1 for the terminating null pointer.
+    char **argv = malloc(sizeof(char *) * (argc + 1));
     if (argv == NULL) {
         return SH_PARSE_MEMORY_ERROR;
     }
@@ -384,6 +385,9 @@ parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out) {
         assert(ctx->tokens[idx].type == SH_TOKEN_WORD);
         argv[idx - ctx->token_idx] = ctx->tokens[idx].text;
     }
+
+    // Terminating null pointer.
+    argv[argc] = NULL;
 
     // Update the context's index.
     ctx->token_idx = end_idx;
