@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -7,6 +8,16 @@
 #include "builtins.h"
 #include "parse.h"
 #include "run.h"
+
+struct sh_spawn_desc {
+    enum sh_job_type job_type;
+
+    enum sh_redirect_type redirect_type;
+    char *redirect_file;
+
+    size_t argc;
+    char **argv;
+};
 
 void run_cmd_line(
     sh_run_result *result,
@@ -21,13 +32,7 @@ void run_cmd(
     enum sh_job_type job_type
 );
 
-void run_simple_cmd(
-    sh_run_result *result,
-    struct sh_ast_simple_cmd const *simple_cmd,
-    enum sh_job_type job_type
-);
-
-pid_t spawn(size_t argc, char *argv[], enum sh_job_type job_type);
+pid_t spawn(struct sh_spawn_desc desc);
 
 sh_run_result run(struct sh_ast_root const *root) {
     sh_run_result result = (sh_run_result) {
@@ -75,21 +80,12 @@ void run_cmd(
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type
 ) {
-    // TODO: redirection
-    run_simple_cmd(result, &cmd->simple_cmd, job_type);
-}
+    size_t argc = cmd->simple_cmd.argc;
+    char **argv = cmd->simple_cmd.argv;
 
-void run_simple_cmd(
-    sh_run_result *result,
-    struct sh_ast_simple_cmd const *simple_cmd,
-    enum sh_job_type job_type
-) {
     // Handle `exit` builtin.
-    if (simple_cmd->argc >= 1 && strcmp(simple_cmd->argv[0], "exit") == 0) {
-        sh_exit_result exit_result = run_exit(
-            simple_cmd->argc,
-            simple_cmd->argv
-        );
+    if (argc >= 1 && strcmp(argv[0], "exit") == 0) {
+        sh_exit_result exit_result = run_exit(argc, argv);
 
         if (exit_result.type != SH_EXIT_SUCCESS) {
             // TODO: write error to `result` on error
@@ -108,21 +104,61 @@ void run_simple_cmd(
         return;
     }
 
+    // Handle non-builtins.
+    struct sh_spawn_desc desc = {
+        .job_type = job_type,
+        .redirect_type = cmd->redirect_type,
+        .redirect_file = cmd->redirect_file,
+        .argc = argc,
+        .argv = argv,
+    };
+
     // TODO: write error to `result` on error
-    pid_t pid = spawn(simple_cmd->argc, simple_cmd->argv, job_type);
+    pid_t pid = spawn(desc);
 }
 
-pid_t spawn(size_t argc, char *argv[], enum sh_job_type job_type) {
+pid_t spawn(struct sh_spawn_desc desc) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process.
-        execvp(argv[0], argv);
+
+        // Handle redirection.
+        if (desc.redirect_type != SH_REDIRECT_NONE) {
+            assert(desc.redirect_file != NULL);
+
+            // Open the file to redirect to.
+            // If we are redirecting stdin, then we open it read-only.
+            // Otherwise, we create and open it write-only.
+            int fd_to = open(
+                desc.redirect_file,
+                desc.redirect_type == SH_REDIRECT_STDIN ? O_RDONLY
+                                                        : O_CREAT | O_WRONLY,
+                0644
+            );
+
+            if (fd_to < 0) {
+                // TODO: handle error
+            }
+
+            int fd_from = desc.redirect_type == SH_REDIRECT_STDOUT
+                              ? STDOUT_FILENO
+                              : (desc.redirect_type == SH_REDIRECT_STDIN
+                                     ? STDIN_FILENO
+                                     : STDERR_FILENO);
+
+            if (dup2(fd_to, fd_from) < 0) {
+                // TODO: handle error
+                close(fd_to);
+            }
+        }
+
+        execvp(desc.argv[0], desc.argv);
 
         // This point is only reached if `execl` failed.
         // There is no point keeping the child process around, so we just exit
         // from the child process.
         exit(EXIT_FAILURE);
-    } else if (pid != -1 && job_type == SH_JOB_FG) {
+    } else if (pid != -1 && desc.job_type == SH_JOB_FG) {
         // Parent process. Only wait if the job is a foreground job.
         // Background jobs are consumed by the signal handler for `SIGCHLD` so
         // that they don't become zombie processes.
