@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "lex.h"
 
@@ -454,72 +455,73 @@ parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out) {
  *
  * @param cmd_line pointer to the command line AST node to display
  */
-void display_cmd_line(struct sh_ast_cmd_line *cmd_line);
+void display_cmd_line(FILE *stream, struct sh_ast_cmd_line *cmd_line);
 
 /**
  * Displays the job AST node for debugging purposes.
  *
  * @param job pointer to the job AST node to display
  */
-void display_job(struct sh_ast_job *job);
+void display_job(FILE *stream, struct sh_ast_job *job);
 
 /**
  * Displays the command AST node for debugging purposes.
  *
  * @param cmd pointer to the command AST node to display
  */
-void display_cmd(struct sh_ast_cmd *cmd);
+void display_cmd(FILE *stream, struct sh_ast_cmd *cmd);
 
 /**
  * Displays the simple command AST node for debugging purposes.
  *
  * @param simple_cmd pointer to the simple command AST node to display
  */
-void display_simple_cmd(struct sh_ast_simple_cmd *simple_cmd);
+void display_simple_cmd(FILE *stream, struct sh_ast_simple_cmd *simple_cmd);
 
-void display_ast(struct sh_ast_root *ast) {
-    printf("ROOT\n");
+void display_ast(FILE *stream, struct sh_ast_root *ast) {
+    fprintf(stream, "ROOT\n");
     if (ast->emptiness == SH_ROOT_NONEMPTY) {
-        display_cmd_line(&ast->cmd_line);
+        display_cmd_line(stream, &ast->cmd_line);
     }
 }
 
-void display_cmd_line(struct sh_ast_cmd_line *cmd_line) {
-    printf("  COMMAND_LINE\n");
+void display_cmd_line(FILE *stream, struct sh_ast_cmd_line *cmd_line) {
+    fprintf(stream, "  COMMAND_LINE\n");
     if (cmd_line->type == SH_COMMAND_REPEAT) {
-        printf("    repeat: %s\n", cmd_line->repeat);
+        fprintf(stream, "    repeat: %s\n", cmd_line->repeat);
     } else { // SH_COMMAND_JOBS
-        printf("    job count: %lu\n", cmd_line->job_count);
+        fprintf(stream, "    job count: %lu\n", cmd_line->job_count);
         for (size_t idx = 0; idx < cmd_line->job_count; idx++) {
-            printf(
+            fprintf(
+                stream,
                 "    %s ",
                 cmd_line->job_descs[idx].type == SH_JOB_FG ? "FOREGROUND"
                                                            : "BACKGROUND"
             );
-            display_job(&cmd_line->job_descs[idx].job);
+            display_job(stream, &cmd_line->job_descs[idx].job);
         }
     }
 }
 
-void display_job(struct sh_ast_job *job) {
-    printf("JOB\n");
-    printf("      command count: %lu\n", job->cmd_count);
+void display_job(FILE *stream, struct sh_ast_job *job) {
+    fprintf(stream, "JOB\n");
+    fprintf(stream, "      command count: %lu\n", job->cmd_count);
     for (size_t idx = 0; idx < job->cmd_count; idx++) {
-        display_cmd(&job->piped_cmds[idx]);
+        display_cmd(stream, &job->piped_cmds[idx]);
     }
 }
-void display_cmd(struct sh_ast_cmd *cmd) {
-    printf("      COMMAND:\n");
-    display_simple_cmd(&cmd->simple_cmd);
-    printf("        redirect type: %d\n", cmd->redirect_type);
-    printf("        redirect file: %s\n", cmd->redirect_file);
+void display_cmd(FILE *stream, struct sh_ast_cmd *cmd) {
+    fprintf(stream, "      COMMAND:\n");
+    display_simple_cmd(stream, &cmd->simple_cmd);
+    fprintf(stream, "        redirect type: %d\n", cmd->redirect_type);
+    fprintf(stream, "        redirect file: %s\n", cmd->redirect_file);
 }
-void display_simple_cmd(struct sh_ast_simple_cmd *simple_cmd) {
-    printf("        SIMPLE COMMAND\n");
-    printf("          argc: %lu\n", simple_cmd->argc);
-    printf("          argv: ");
+void display_simple_cmd(FILE *stream, struct sh_ast_simple_cmd *simple_cmd) {
+    fprintf(stream, "        SIMPLE COMMAND\n");
+    fprintf(stream, "          argc: %lu\n", simple_cmd->argc);
+    fprintf(stream, "          argv: ");
     for (size_t idx = 0; idx < simple_cmd->argc; idx++) {
-        printf("%s ", simple_cmd->argv[idx]);
+        fprintf(stream, "%s ", simple_cmd->argv[idx]);
     };
-    printf("\n");
+    fprintf(stream, "\n");
 }

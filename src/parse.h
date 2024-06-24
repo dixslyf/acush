@@ -1,7 +1,7 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "lex.h"
 
@@ -124,6 +124,6 @@ void destroy_ast(struct sh_ast_root *ast_root);
  *
  * @param ast_root pointer to the root of the AST to display
  */
-void display_ast(struct sh_ast_root *ast_root);
+void display_ast(FILE *stream, struct sh_ast_root *ast_root);
 
 #endif

@@ -71,7 +71,7 @@ int main() {
                 if (parse_result != SH_PARSE_SUCCESS) {
                     printf("Failed to parse command line\n");
                 } else {
-                    display_ast(&ast);
+                    display_ast(stderr, &ast);
                     run(&ast);
                     destroy_ast(&ast);
                 }
