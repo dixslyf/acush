@@ -1,8 +1,23 @@
 #ifndef RUN_H
 #define RUN_H
 
-#include <parse.h>
+#include <stdbool.h>
 
-int run(struct sh_ast_root const *root);
+#include "parse.h"
+
+typedef struct sh_run_result sh_run_result;
+typedef struct sh_run_error sh_run_error;
+
+struct sh_run_result {
+    bool should_exit;
+    size_t error_count;
+    sh_run_error *errors;
+};
+
+struct sh_run_error {
+    // TODO:
+};
+
+sh_run_result run(struct sh_ast_root const *root);
 
 #endif

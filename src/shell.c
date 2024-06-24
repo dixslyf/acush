@@ -72,7 +72,7 @@ int main() {
                     printf("Failed to parse command line\n");
                 } else {
                     display_ast(stderr, &ast);
-                    run(&ast);
+                    sh_run_result result = run(&ast);
                     destroy_ast(&ast);
                 }
             }
