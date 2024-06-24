@@ -8,12 +8,18 @@
 #define WHITESPACE_DELIMITERS " \n\t\f\r\v"
 
 /**
- * Attempts to lex the given character point into a simple special token.
+ * Attempts to lex the given character pointer into a simple special token.
  * `0` is returned and a token corresponding to `*cp` is written to `token_out`
  * if `cp` indeed represents a simple special token. Otherwise, `-1` is
  * returned.
  *
  * See `is_simple_special()` for what counts as a simple special token.
+ *
+ * @param cp the character pointer to try lexing into a simple special token
+ * @param token_out a pointer to write the output token to
+ *
+ * @return `0` if `cp` was successfully parsed into a simple special token;
+ * otherwise, `-1`
  */
 int lex_simple_special(char const *cp, struct sh_token *token_out);
 
@@ -22,16 +28,27 @@ int lex_simple_special(char const *cp, struct sh_token *token_out);
  * `false`.
  *
  * Whitespace delimiters are those in `WHITESPACE_DELIMITERS`.
+ *
+ * @param cp the character pointer to check
+ * @return `true` if `*cp` is a whitespace delimiter; otherwise, `false`
  */
 bool is_ws_delimiter(char const *cp);
 
-/** Returns `true` if `*cp` is a quote (' or "). Otherwise, returns `false`. */
+/**
+ * Returns `true` if `*cp` is a quote (' or "). Otherwise, returns `false`.
+ *
+ * @param cp the character pointer to check
+ * @return `true` if `*cp` is a quote; otherwise, `false`
+ */
 bool is_quote(char const *cp);
 
 /**
  * Returns `true` if `cp` represents a simple special token.
  *
  * A simple special token is one of the following: & ; | < > 2> ! ' ".
+ *
+ * @param cp the character pointer to check
+ * @return `true` if `*cp` represents a simple special token; otherwise, `false`
  */
 bool is_simple_special(char const *cp);
 
@@ -42,18 +59,21 @@ bool is_simple_special(char const *cp);
  *   - `is_ws_delimiter(cp)`
  *   - `is_simple_special(cp)`
  *   - `*cp == '\0'`
+ *
+ * @param cp the character pointer to check
+ * @return `true` if `*cp` represents a word boundary; otherwise, `false`
  */
 bool is_word_boundary(char const *cp);
 
-// Represents a possible state of the lexing process.
+/** Represents a possible state of the lexing process. */
 enum sh_state {
-    // Not in a word.
+    /** Indicates that the lexer is currently not in a word. */
     SH_STATE_DULL,
 
-    // In a quoted section of a word.
+    /** Indicates that the lexer is in a quoted section of a word. */
     SH_STATE_QUOTED,
 
-    // In an unquoted section of a word.
+    /** Indicates that the lexer is in an unquoted section of a word. */
     SH_STATE_UNQUOTED
 };
 

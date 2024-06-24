@@ -1,6 +1,7 @@
 #ifndef LEX_H
 #define LEX_H
 
+/** Represents the type of a token. */
 enum sh_token_type {
     SH_TOKEN_AMP,               // &
     SH_TOKEN_SEMICOLON,         // ;
@@ -12,6 +13,10 @@ enum sh_token_type {
     SH_TOKEN_WORD,              // Everything else.
 };
 
+/**
+ * Represents a token, represented as a pair consisting of the token's type and
+ * text content.
+ */
 struct sh_token {
     enum sh_token_type type;
     char *text;
@@ -24,11 +29,9 @@ struct sh_token {
  */
 struct sh_lex_context;
 
-/**
- * Represents the result of a call to `lex()`.
- */
+/** Represents the result of a call to `lex()`. */
 enum sh_lex_result {
-    /** Indicates a successful lex. */
+    /** Indicates the end of a successful lex. */
     SH_LEX_END,
 
     /** Indicates that lexing has not yet finished and additional calls to
@@ -39,7 +42,14 @@ enum sh_lex_result {
     SH_LEX_UNTERMINATED_QUOTE,
 };
 
-/** Initialises a lex context for the given input string. */
+/**
+ * Initialises a lex context for the given input string.
+ *
+ * A lex context keeps track of stateful information required by the lexer.
+ *
+ * @param input the input string
+ * @return a lex context for the input string
+ */
 struct sh_lex_context *init_lex_context(char const *input);
 
 /**
@@ -55,11 +65,17 @@ void destroy_lex_context(struct sh_lex_context *ctx);
  * delimited by the following characters: space, newline, tab,
  * form feed, carriage return and vertical tab.
  *
- * Each lex should have this function should be called multiple times with the
- * same context. A token is written to `token_out` on every call, except when
- * the lex has finished.
+ * This function should be called with a lex context created by
+ * `init_lex_context()`. Each lex should have this function should be called
+ * multiple times with the same context. A token is written to `token_out` on
+ * every call, except when the lex has finished.
  *
  * For the return value, see `enum sh_lex_result`.
+ *
+ * @param ctx the lex context
+ * @param token_out a pointer to write the token to
+ *
+ * @return the result of the current iteration
  */
 enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out);
 
@@ -68,6 +84,8 @@ enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out);
  *
  * This function should be called on all tokens returned by
  * `lex()` once they are no longer needed.
+ *
+ * @param token the token to destroy
  */
 void destroy_token(struct sh_token *token);
 
