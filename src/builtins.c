@@ -16,6 +16,7 @@ struct sh_exit_result run_exit(size_t argc, char *argv[]) {
     // More than 1 argument was given to `exit`, so we don't know how to
     // proceed.
     if (argc > 2) {
+        fprintf(stderr, "exit: unexpected arguments\n");
         result.type = SH_EXIT_UNEXPECTED_ARG_COUNT;
         return result;
     }
@@ -34,12 +35,14 @@ struct sh_exit_result run_exit(size_t argc, char *argv[]) {
 
     // The entire string is a valid `long` only if `*endptr` is the null byte.
     if (*endptr != '\0') {
+        fprintf(stderr, "exit: unexpected non-integer exit code\n");
         result.type = SH_EXIT_NONINTEGER_EXIT_CODE;
         return result;
     }
 
     // The exit code is outside the range of `int`.
     if (exit_code < INT_MIN || exit_code > INT_MAX) {
+        fprintf(stderr, "exit: out-of-range exit code\n");
         result.type = SH_EXIT_OUT_OF_RANGE_EXIT_CODE;
         return result;
     }
@@ -56,6 +59,7 @@ run_history(struct sh_shell_context const *ctx, size_t argc, char *argv[]) {
     assert(strcmp(argv[0], "history") == 0);
 
     if (argc > 1) {
+        fprintf(stderr, "history: unexpected arguments\n");
         return SH_HISTORY_UNEXPECTED_ARG_COUNT;
     }
 
