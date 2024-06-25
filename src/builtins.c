@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -47,4 +48,20 @@ struct sh_exit_result run_exit(size_t argc, char *argv[]) {
     result.exit_code = (int) exit_code;
 
     return result;
+}
+
+enum sh_history_result
+run_history(struct sh_shell_context const *ctx, size_t argc, char *argv[]) {
+    assert(argc >= 1);
+    assert(strcmp(argv[0], "history") == 0);
+
+    if (argc > 1) {
+        return SH_HISTORY_UNEXPECTED_ARG_COUNT;
+    }
+
+    for (size_t idx = 0; idx < ctx->history_count; idx++) {
+        printf("%lu  %s\n", idx + 1, ctx->history[idx]);
+    }
+
+    return SH_HISTORY_SUCCESS;
 }

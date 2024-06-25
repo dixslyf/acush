@@ -8,21 +8,15 @@
 #include "lex.h"
 #include "parse.h"
 #include "run.h"
-
-/** Sets up signal handling. */
-void setup_signals();
-
-/**
- * Handler for `SIGCHLD` signal.
- *
- * This handler consumes background processes with `waitpid()` to make sure they
- * do not become zombie processes.
- */
-void handle_sigchld(int signo);
+#include "shell.h"
 
 int main() {
     setup_signals();
 
+    struct sh_shell_context sh_ctx;
+    init_shell_context(&sh_ctx);
+
+    // Main loop.
     bool should_exit = false;
     int exit_code = EXIT_SUCCESS;
     while (!should_exit) {
@@ -57,7 +51,9 @@ int main() {
             line[line_len - 1] = '\0';
         }
 
-        struct sh_lex_context *ctx = init_lex_context(line);
+        add_to_history(&sh_ctx, line);
+
+        struct sh_lex_context *lex_ctx = init_lex_context(line);
 
         // The worst case scenario for the number of tokens is the
         // number of characters in the line. We waste a bit of
@@ -67,7 +63,7 @@ int main() {
 
         struct sh_token token;
         enum sh_lex_result lex_result;
-        while ((lex_result = lex(ctx, &token)) == SH_LEX_ONGOING) {
+        while ((lex_result = lex(lex_ctx, &token)) == SH_LEX_ONGOING) {
             tokens[token_count] = token;
             token_count++;
         }
@@ -86,7 +82,7 @@ int main() {
                 printf("Failed to parse command line\n");
             } else {
                 display_ast(stderr, &ast);
-                struct sh_run_result result = run(&ast);
+                struct sh_run_result result = run(&sh_ctx, &ast);
                 if (result.should_exit) {
                     should_exit = true;
                     exit_code = result.exit_code;
@@ -99,13 +95,50 @@ int main() {
         for (size_t idx = 0; idx < token_count; idx++) {
             destroy_token(&tokens[idx]);
         }
-        destroy_lex_context(ctx);
-
-        // `getline` uses dynamic allocation, so we need to free the line.
-        free(line);
+        destroy_lex_context(lex_ctx);
+        // We don't free the line since it is kept in the history.
     }
 
+    destroy_shell_context(&sh_ctx);
     return exit_code;
+}
+
+void init_shell_context(struct sh_shell_context *ctx) {
+    *ctx = (struct sh_shell_context) {
+        .history_capacity = 0,
+        .history_count = 0,
+        .history = NULL,
+    };
+}
+
+enum sh_add_to_history_result
+add_to_history(struct sh_shell_context *ctx, char *line) {
+    // Grow the history buffer if needed.
+    if (ctx->history_count == ctx->history_capacity) {
+        size_t new_capacity = ctx->history_capacity == 0
+                                  ? 4
+                                  : ctx->history_capacity * 2;
+
+        char **tmp = realloc(ctx->history, sizeof(char *) * new_capacity);
+        if (tmp == NULL) {
+            return SH_ADD_TO_HISTORY_MEMORY_ERROR;
+        }
+        ctx->history_capacity = new_capacity;
+        ctx->history = tmp;
+    }
+
+    // Add the line.
+    ctx->history[ctx->history_count] = line;
+    ctx->history_count++;
+    return SH_ADD_TO_HISTORY_SUCCESS;
+}
+
+void destroy_shell_context(struct sh_shell_context *ctx) {
+    for (size_t idx = 0; idx < ctx->history_count; idx++) {
+        free(ctx->history[idx]);
+    }
+    free(ctx->history);
+    ctx->history = NULL;
 }
 
 void setup_signals() {

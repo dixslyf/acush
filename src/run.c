@@ -41,41 +41,45 @@ struct sh_spawn_desc {
 };
 
 void run_cmd_line(
+    struct sh_shell_context const *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line
 );
 
 void run_job_desc(
+    struct sh_shell_context const *ctx,
     struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 );
 
 void run_cmd(
+    struct sh_shell_context const *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type,
     struct sh_pipe_desc pipe_desc
 );
 
-pid_t spawn(struct sh_spawn_desc desc);
+pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc);
 
-struct sh_run_result run(struct sh_ast_root const *root) {
+struct sh_run_result
+run(struct sh_shell_context const *ctx, struct sh_ast_root const *root) {
     struct sh_run_result result = (struct sh_run_result) {
         .should_exit = false,
         .error_count = 0,
         .errors = NULL,
     };
 
-    run_cmd_line(&result, &root->cmd_line);
+    run_cmd_line(ctx, &result, &root->cmd_line);
 
     return result;
 }
 
 void run_cmd_line(
+    struct sh_shell_context const *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line
 ) {
-
     // Empty line — nothing to run.
     if (cmd_line == NULL) {
         return;
@@ -87,11 +91,12 @@ void run_cmd_line(
     }
 
     for (size_t idx = 0; idx < cmd_line->job_count; idx++) {
-        run_job_desc(result, &cmd_line->job_descs[idx]);
+        run_job_desc(ctx, result, &cmd_line->job_descs[idx]);
     }
 }
 
 void run_job_desc(
+    struct sh_shell_context const *ctx,
     struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 ) {
@@ -103,7 +108,7 @@ void run_job_desc(
             .redirect_stdin = false,
             .redirect_stdout = false,
         };
-        run_cmd(result, &job->piped_cmds[0], job_desc->type, pipe_desc);
+        run_cmd(ctx, result, &job->piped_cmds[0], job_desc->type, pipe_desc);
         return;
     }
 
@@ -135,11 +140,12 @@ void run_job_desc(
         }
 
         // TODO: handle failure — need to close pipes
-        run_cmd(result, &job->piped_cmds[idx], job_desc->type, pipe_desc);
+        run_cmd(ctx, result, &job->piped_cmds[idx], job_desc->type, pipe_desc);
     }
 }
 
 void run_cmd(
+    struct sh_shell_context const *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type,
@@ -169,7 +175,7 @@ void run_cmd(
         return;
     }
 
-    // Handle non-builtins.
+    // Handle commands that are not `exit`.
     struct sh_spawn_desc desc = {
         .job_type = job_type,
         .redirect_type = cmd->redirect_type,
@@ -180,10 +186,10 @@ void run_cmd(
     };
 
     // TODO: write error to `result` on error
-    pid_t pid = spawn(desc);
+    pid_t pid = spawn(ctx, desc);
 }
 
-pid_t spawn(struct sh_spawn_desc desc) {
+pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process.
@@ -247,6 +253,17 @@ pid_t spawn(struct sh_spawn_desc desc) {
             }
         }
 
+        // Handle `history` builtin.
+        if (strcmp(desc.argv[0], "history") == 0) {
+            enum sh_history_result result = run_history(
+                ctx,
+                desc.argc,
+                desc.argv
+            );
+            exit(result);
+        }
+
+        // Handle non-builtins.
         execvp(desc.argv[0], desc.argv);
 
         // This point is only reached if `execl` failed.

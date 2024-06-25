@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "parse.h"
+#include "shell.h"
 
 struct sh_run_result {
     bool should_exit;
@@ -17,6 +18,7 @@ struct sh_run_error {
     // TODO:
 };
 
-struct sh_run_result run(struct sh_ast_root const *root);
+struct sh_run_result
+run(struct sh_shell_context const *ctx, struct sh_ast_root const *root);
 
 #endif

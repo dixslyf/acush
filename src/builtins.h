@@ -1,6 +1,7 @@
 #ifndef BUILTINS_H
 #define BUILTINS_H
 
+#include "shell.h"
 #include <stdlib.h>
 
 enum sh_exit_result_type {
@@ -18,5 +19,13 @@ struct sh_exit_result {
 };
 
 struct sh_exit_result run_exit(size_t argc, char *argv[]);
+
+enum sh_history_result {
+    SH_HISTORY_SUCCESS = 0,
+    SH_HISTORY_UNEXPECTED_ARG_COUNT,
+};
+
+enum sh_history_result
+run_history(struct sh_shell_context const *ctx, size_t argc, char *argv[]);
 
 #endif
