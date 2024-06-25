@@ -37,4 +37,13 @@ enum sh_prompt_result {
 enum sh_prompt_result
 run_prompt(struct sh_shell_context *ctx, size_t argc, char *argv[]);
 
+enum sh_pwd_result {
+    SH_PWD_SUCCESS = 0,
+    SH_PWD_UNEXPECTED_ARG_COUNT,
+    SH_PWD_MEMORY_ERROR,
+    SH_PWD_GENERIC_ERROR,
+};
+
+enum sh_pwd_result run_pwd(size_t argc, char *argv[]);
+
 #endif

@@ -1,8 +1,10 @@
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "builtins.h"
 
@@ -98,3 +100,49 @@ run_prompt(struct sh_shell_context *ctx, size_t argc, char *argv[]) {
     return SH_PROMPT_SUCCESS;
 }
 
+enum sh_pwd_result run_pwd(size_t argc, char *argv[]) {
+    // This function should only be called when `argv[0]` is "pwd".
+    assert(argc >= 1);
+    assert(strcmp(argv[0], "pwd") == 0);
+
+    // Check for unexpected arguments.
+    if (argc > 1) {
+        fprintf(stderr, "pwd: unexpected argument count\n");
+        return SH_PWD_UNEXPECTED_ARG_COUNT;
+    }
+
+    // Initial buffer size for the current working directory.
+    // `PATH_MAX` from `<limits.h` is, unfortunately, not an accurate value for
+    // the true max path size. See
+    // https://stackoverflow.com/questions/9449241/where-is-path-max-defined-in-linux.
+    size_t size = 128;
+    char *cwd = malloc(sizeof(char) * size);
+    if (cwd == NULL) {
+        perror("pwd");
+        return SH_PWD_MEMORY_ERROR;
+    }
+
+    // Get the current working directory.
+    while (getcwd(cwd, size) == NULL) {
+        if (errno == ERANGE) {
+            // Buffer was too small, so increase its size.
+            size *= 2;
+            char *new_cwd = realloc(cwd, sizeof(char) * size);
+            if (new_cwd == NULL) {
+                free(cwd);
+                perror("pwd");
+                return SH_PWD_MEMORY_ERROR;
+            }
+            cwd = new_cwd;
+        } else {
+            // Some other error occurred.
+            free(cwd);
+            perror("pwd");
+            return SH_PWD_GENERIC_ERROR;
+        }
+    }
+
+    printf("%s\n", cwd);
+    free(cwd);
+    return SH_PWD_SUCCESS;
+}

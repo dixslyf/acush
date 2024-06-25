@@ -272,6 +272,14 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
             exit(result);
         }
 
+        if (strcmp(desc.argv[0], "pwd") == 0) {
+            enum sh_pwd_result result = run_pwd(desc.argc, desc.argv);
+            if (result != SH_PWD_SUCCESS) {
+                // TODO: handle error
+            }
+            exit(result);
+        }
+
         // Handle non-builtins.
         execvp(desc.argv[0], desc.argv);
 
