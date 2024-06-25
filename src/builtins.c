@@ -59,7 +59,7 @@ run_history(struct sh_shell_context const *ctx, size_t argc, char *argv[]) {
     assert(strcmp(argv[0], "history") == 0);
 
     if (argc > 1) {
-        fprintf(stderr, "history: unexpected arguments\n");
+        fprintf(stderr, "history: unexpected argument count\n");
         return SH_HISTORY_UNEXPECTED_ARG_COUNT;
     }
 
@@ -69,3 +69,32 @@ run_history(struct sh_shell_context const *ctx, size_t argc, char *argv[]) {
 
     return SH_HISTORY_SUCCESS;
 }
+
+enum sh_prompt_result
+run_prompt(struct sh_shell_context *ctx, size_t argc, char *argv[]) {
+    assert(argc >= 1);
+    assert(strcmp(argv[0], "prompt") == 0);
+
+    // Expecting exactly one argument after "prompt".
+    if (argc != 2) {
+        fprintf(stderr, "prompt: unexpected argument count\n");
+        fprintf(stderr, "usage: prompt <new-prompt>\n");
+        return SH_PROMPT_UNEXPECTED_ARG_COUNT;
+    }
+
+    // Allocate memory for the new prompt string.
+    // We don't reuse `argv[1]` so that the prompt is independent of the
+    // lifetime of the tokens — not really necessary, but easier housekeeping.
+    char *tmp = strdup(argv[1]);
+    if (tmp == NULL) {
+        perror("prompt");
+        return SH_PROMPT_MEMORY_ERROR;
+    }
+
+    // Free the old prompt string.
+    free(ctx->prompt);
+    ctx->prompt = tmp;
+
+    return SH_PROMPT_SUCCESS;
+}
+

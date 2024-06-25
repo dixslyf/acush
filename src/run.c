@@ -41,19 +41,19 @@ struct sh_spawn_desc {
 };
 
 void run_cmd_line(
-    struct sh_shell_context const *ctx,
+    struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line
 );
 
 void run_job_desc(
-    struct sh_shell_context const *ctx,
+    struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 );
 
 void run_cmd(
-    struct sh_shell_context const *ctx,
+    struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type,
@@ -63,7 +63,7 @@ void run_cmd(
 pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc);
 
 struct sh_run_result
-run(struct sh_shell_context const *ctx, struct sh_ast_root const *root) {
+run(struct sh_shell_context *ctx, struct sh_ast_root const *root) {
     struct sh_run_result result = (struct sh_run_result) {
         .should_exit = false,
         .error_count = 0,
@@ -76,7 +76,7 @@ run(struct sh_shell_context const *ctx, struct sh_ast_root const *root) {
 }
 
 void run_cmd_line(
-    struct sh_shell_context const *ctx,
+    struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line
 ) {
@@ -96,7 +96,7 @@ void run_cmd_line(
 }
 
 void run_job_desc(
-    struct sh_shell_context const *ctx,
+    struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 ) {
@@ -145,7 +145,7 @@ void run_job_desc(
 }
 
 void run_cmd(
-    struct sh_shell_context const *ctx,
+    struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type,
@@ -172,6 +172,15 @@ void run_cmd(
         assert(exit_result.type == SH_EXIT_SUCCESS);
         result->should_exit = true;
         result->exit_code = exit_result.exit_code;
+        return;
+    }
+
+    if (argc >= 1 && strcmp(argv[0], "prompt") == 0) {
+        enum sh_prompt_result prompt_result = run_prompt(ctx, argc, argv);
+
+        if (prompt_result != SH_PROMPT_SUCCESS) {
+            // TODO: handle error
+        }
         return;
     }
 

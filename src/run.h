@@ -19,6 +19,6 @@ struct sh_run_error {
 };
 
 struct sh_run_result
-run(struct sh_shell_context const *ctx, struct sh_ast_root const *root);
+run(struct sh_shell_context *ctx, struct sh_ast_root const *root);
 
 #endif

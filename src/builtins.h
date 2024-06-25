@@ -28,4 +28,13 @@ enum sh_history_result {
 enum sh_history_result
 run_history(struct sh_shell_context const *ctx, size_t argc, char *argv[]);
 
+enum sh_prompt_result {
+    SH_PROMPT_SUCCESS = 0,
+    SH_PROMPT_UNEXPECTED_ARG_COUNT,
+    SH_PROMPT_MEMORY_ERROR,
+};
+
+enum sh_prompt_result
+run_prompt(struct sh_shell_context *ctx, size_t argc, char *argv[]);
+
 #endif

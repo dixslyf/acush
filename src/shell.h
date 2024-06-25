@@ -7,9 +7,16 @@ struct sh_shell_context {
     size_t history_capacity;
     size_t history_count;
     char **history;
+    char *prompt; /**< The current shell prompt. */
 };
 
-void init_shell_context(struct sh_shell_context *ctx);
+enum sh_init_shell_context_result {
+    SH_INIT_SHELL_CONTEXT_SUCCESS,
+    SH_INIT_SHELL_CONTEXT_MEMORY_ERROR,
+};
+
+enum sh_init_shell_context_result
+init_shell_context(struct sh_shell_context *ctx);
 
 enum sh_add_to_history_result {
     SH_ADD_TO_HISTORY_SUCCESS,

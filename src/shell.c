@@ -14,13 +14,16 @@ int main() {
     setup_signals();
 
     struct sh_shell_context sh_ctx;
-    init_shell_context(&sh_ctx);
+    if (init_shell_context(&sh_ctx) != SH_INIT_SHELL_CONTEXT_SUCCESS) {
+        perror("shell context initialisation");
+        return EXIT_FAILURE;
+    }
 
     // Main loop.
     bool should_exit = false;
     int exit_code = EXIT_SUCCESS;
     while (!should_exit) {
-        printf("$ ");
+        printf("%s ", sh_ctx.prompt);
 
         // Read user input command.
         char *line = NULL;
@@ -102,12 +105,22 @@ int main() {
     return exit_code;
 }
 
-void init_shell_context(struct sh_shell_context *ctx) {
+enum sh_init_shell_context_result
+init_shell_context(struct sh_shell_context *ctx) {
+    // Default prompt is "%".
+    char *prompt = strdup("%");
+    if (prompt == NULL) {
+        return SH_INIT_SHELL_CONTEXT_MEMORY_ERROR;
+    }
+
     *ctx = (struct sh_shell_context) {
         .history_capacity = 0,
         .history_count = 0,
         .history = NULL,
+        .prompt = prompt,
     };
+
+    return SH_INIT_SHELL_CONTEXT_SUCCESS;
 }
 
 enum sh_add_to_history_result
@@ -133,11 +146,15 @@ add_to_history(struct sh_shell_context *ctx, char *line) {
 }
 
 void destroy_shell_context(struct sh_shell_context *ctx) {
+    // Release memory for the history.
     for (size_t idx = 0; idx < ctx->history_count; idx++) {
         free(ctx->history[idx]);
     }
     free(ctx->history);
     ctx->history = NULL;
+
+    // Release memory for the prompt.
+    free(ctx->prompt);
 }
 
 void setup_signals() {
