@@ -5,12 +5,12 @@
 
 #include "builtins.h"
 
-sh_exit_result run_exit(size_t argc, char *argv[]) {
+struct sh_exit_result run_exit(size_t argc, char *argv[]) {
     // This function should only be called when `argv[0]` is "exit".
     assert(argc >= 1);
     assert(strcmp(argv[0], "exit") == 0);
 
-    sh_exit_result result;
+    struct sh_exit_result result;
 
     // More than 1 argument was given to `exit`, so we don't know how to
     // proceed.

@@ -41,14 +41,17 @@ struct sh_spawn_desc {
 };
 
 void run_cmd_line(
-    sh_run_result *result,
+    struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line
 );
 
-void run_job_desc(sh_run_result *result, struct sh_job_desc const *job_desc);
+void run_job_desc(
+    struct sh_run_result *result,
+    struct sh_job_desc const *job_desc
+);
 
 void run_cmd(
-    sh_run_result *result,
+    struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type,
     struct sh_pipe_desc pipe_desc
@@ -56,8 +59,8 @@ void run_cmd(
 
 pid_t spawn(struct sh_spawn_desc desc);
 
-sh_run_result run(struct sh_ast_root const *root) {
-    sh_run_result result = (sh_run_result) {
+struct sh_run_result run(struct sh_ast_root const *root) {
+    struct sh_run_result result = (struct sh_run_result) {
         .should_exit = false,
         .error_count = 0,
         .errors = NULL,
@@ -69,7 +72,7 @@ sh_run_result run(struct sh_ast_root const *root) {
 }
 
 void run_cmd_line(
-    sh_run_result *result,
+    struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line
 ) {
 
@@ -88,7 +91,10 @@ void run_cmd_line(
     }
 }
 
-void run_job_desc(sh_run_result *result, struct sh_job_desc const *job_desc) {
+void run_job_desc(
+    struct sh_run_result *result,
+    struct sh_job_desc const *job_desc
+) {
     struct sh_ast_job const *job = &job_desc->job;
 
     // If there is only one command, no piping is required.
@@ -134,7 +140,7 @@ void run_job_desc(sh_run_result *result, struct sh_job_desc const *job_desc) {
 }
 
 void run_cmd(
-    sh_run_result *result,
+    struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     enum sh_job_type job_type,
     struct sh_pipe_desc pipe_desc
@@ -144,7 +150,7 @@ void run_cmd(
 
     // Handle `exit` builtin.
     if (argc >= 1 && strcmp(argv[0], "exit") == 0) {
-        sh_exit_result exit_result = run_exit(argc, argv);
+        struct sh_exit_result exit_result = run_exit(argc, argv);
 
         if (exit_result.type != SH_EXIT_SUCCESS) {
             // TODO: write error to `result` on error

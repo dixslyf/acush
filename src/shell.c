@@ -86,7 +86,7 @@ int main() {
                 printf("Failed to parse command line\n");
             } else {
                 display_ast(stderr, &ast);
-                sh_run_result result = run(&ast);
+                struct sh_run_result result = run(&ast);
                 if (result.should_exit) {
                     should_exit = true;
                     exit_code = result.exit_code;
