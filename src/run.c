@@ -283,9 +283,10 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
         // Handle non-builtins.
         execvp(desc.argv[0], desc.argv);
 
-        // This point is only reached if `execl` failed.
-        // There is no point keeping the child process around, so we just exit
-        // from the child process.
+        // This point is only reached if `execvp` failed.
+        // There is no point keeping the child process around, so we just print
+        // an error message and exit from the child process.
+        fprintf(stderr, "%s: command not found\n", desc.argv[0]);
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
         // Parent process.
