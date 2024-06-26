@@ -10,7 +10,14 @@ enum sh_token_type {
     SH_TOKEN_ANGLE_BRACKET_L,   // <
     SH_TOKEN_ANGLE_BRACKET_R,   // >
     SH_TOKEN_2_ANGLE_BRACKET_R, // 2>
+    SH_TOKEN_SINGLE_QUOTE,      // '
+    SH_TOKEN_DOUBLE_QUOTE,      // "
+    SH_TOKEN_ASTERISK,          // *
+    SH_TOKEN_QUESTION,          // ?
+    SH_TOKEN_SQUARE_BRACKET_L,  // [
+    SH_TOKEN_WHITESPACE,        // Whitespace.
     SH_TOKEN_WORD,              // Everything else.
+    SH_TOKEN_END,               // Indicates the end of a lex.
 };
 
 /**
@@ -22,14 +29,13 @@ struct sh_token {
     char *text;
 };
 
-/**
- * Keeps track of various context information required by lexing.
- *
- * See `lex()` for more information.
- */
-struct sh_lex_context;
+/** Keeps track of various context information required by lexing (lossless). */
+struct sh_lex_lossless_context {
+    // The current character being processed in the input string.
+    char const *cp;
+};
 
-/** Represents the result of a call to `lex()`. */
+/** Represents the result of a call to `lex_lossless()`. */
 enum sh_lex_result {
     /** Indicates the end of a successful lex. */
     SH_LEX_END,
@@ -40,44 +46,42 @@ enum sh_lex_result {
 
     /** Indicates an error condition where there is a missing closing quote. */
     SH_LEX_UNTERMINATED_QUOTE,
+
+    /** Indicates a failure to allocate memory. */
+    SH_LEX_MEMORY_ERROR,
 };
 
 /**
- * Initialises a lex context for the given input string.
- *
- * A lex context keeps track of stateful information required by the lexer.
+ * Initialises a lex (lossless) context for the given input string.
  *
  * @param input the input string
- * @return a lex context for the input string
+ * @param ctx_out a pointer to the context to initialise
  */
-struct sh_lex_context *init_lex_context(char const *input);
+void init_lex_lossless_context(
+    char const *input,
+    struct sh_lex_lossless_context *ctx_out
+);
 
 /**
- * Destroys a lex context.
+ * Lexes the given input string into a sequence of tokens.
  *
- * This function should be called on any lex contexts created by
- * `init_lex_context()` once the context is no longer needed.
- */
-void destroy_lex_context(struct sh_lex_context *ctx);
-
-/**
- * Lexes the given input string into a sequence of tokens
- * delimited by the following characters: space, newline, tab,
- * form feed, carriage return and vertical tab.
+ * The lex is performed losslessly. That is, it is possible to rebuild the
+ * original input exactly from the resulting tokens.
  *
  * This function should be called with a lex context created by
- * `init_lex_context()`. Each lex should have this function should be called
- * multiple times with the same context. A token is written to `token_out` on
- * every call, except when the lex has finished.
+ * `init_lex_lossless_context()`. Each lex should have this function should be
+ * called multiple times with the same context. A token is written to
+ * `token_out` on every call.
  *
  * For the return value, see `enum sh_lex_result`.
  *
- * @param ctx the lex context
+ * @param ctx the lex (lossless) context
  * @param token_out a pointer to write the token to
  *
  * @return the result of the current iteration
  */
-enum sh_lex_result lex(struct sh_lex_context *ctx, struct sh_token *token_out);
+enum sh_lex_result
+lex_lossless(struct sh_lex_lossless_context *ctx, struct sh_token *token_out);
 
 /**
  * Destroys a token.

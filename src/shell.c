@@ -56,48 +56,60 @@ int main() {
 
         add_to_history(&sh_ctx, line);
 
-        struct sh_lex_context *lex_ctx = init_lex_context(line);
+        struct sh_lex_lossless_context lex_ctx;
+        init_lex_lossless_context(line, &lex_ctx);
 
         // The worst case scenario for the number of tokens is the
-        // number of characters in the line. We waste a bit of
-        // space, but the amount is trivial.
-        struct sh_token tokens[line_len];
+        // number of characters in the line (including the null character). We
+        // waste a bit of space, but the amount is trivial.
+        struct sh_token tokens[line_len + 1];
         size_t token_count = 0;
 
         struct sh_token token;
         enum sh_lex_result lex_result;
-        while ((lex_result = lex(lex_ctx, &token)) == SH_LEX_ONGOING) {
+        while ((lex_result = lex_lossless(&lex_ctx, &token)) == SH_LEX_ONGOING)
+        {
+            printf("Token: %s.\n", token.text);
             tokens[token_count] = token;
             token_count++;
         }
 
+        // Add the terminating end token.
+        tokens[token_count] = token;
+        token_count++;
+        printf("Token: %s.\n", token.text);
+
         if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
-            printf("Error: unterminated quote\n");
+            printf("error: unterminated quote\n");
+        } else if (lex_result == SH_LEX_MEMORY_ERROR) {
+            perror("lex_lossless");
         } else {
-            struct sh_ast_root ast;
-            enum sh_parse_result parse_result = parse(
-                tokens,
-                token_count,
-                &ast
-            );
+            // FIXME:
 
-            if (parse_result != SH_PARSE_SUCCESS) {
-                printf("Failed to parse command line\n");
-            } else {
-                struct sh_run_result result = run(&sh_ctx, &ast);
-                if (sh_ctx.should_exit) {
-                    should_exit = true;
-                    exit_code = sh_ctx.exit_code;
-                }
+            // struct sh_ast_root ast;
+            // enum sh_parse_result parse_result = parse(
+            //     tokens,
+            //     token_count,
+            //     &ast
+            // );
 
-                destroy_ast(&ast);
-            }
+            // if (parse_result != SH_PARSE_SUCCESS) {
+            //     printf("Failed to parse command line\n");
+            // } else {
+            //    struct sh_run_result result = run(&sh_ctx, &ast);
+            //    if (sh_ctx.should_exit) {
+            //        should_exit = true;
+            //        exit_code = sh_ctx.exit_code;
+            //    }
+            //
+            //     destroy_ast(&ast);
+            // }
         }
 
         for (size_t idx = 0; idx < token_count; idx++) {
             destroy_token(&tokens[idx]);
         }
-        destroy_lex_context(lex_ctx);
+
         // We don't free the line since it is kept in the history.
     }
 
