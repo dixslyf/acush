@@ -510,12 +510,14 @@ void display_job(FILE *stream, struct sh_ast_job *job) {
         display_cmd(stream, &job->piped_cmds[idx]);
     }
 }
+
 void display_cmd(FILE *stream, struct sh_ast_cmd *cmd) {
     fprintf(stream, "      COMMAND:\n");
     display_simple_cmd(stream, &cmd->simple_cmd);
     fprintf(stream, "        redirect type: %d\n", cmd->redirect_type);
     fprintf(stream, "        redirect file: %s\n", cmd->redirect_file);
 }
+
 void display_simple_cmd(FILE *stream, struct sh_ast_simple_cmd *simple_cmd) {
     fprintf(stream, "        SIMPLE COMMAND\n");
     fprintf(stream, "          argc: %lu\n", simple_cmd->argc);
