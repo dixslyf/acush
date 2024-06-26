@@ -184,6 +184,17 @@ void run_cmd(
         return;
     }
 
+    // Note: This must be done here and not in `spawn()` because, if we did it
+    // in `spawn()`, then the current directory would be changed for the child
+    // process, not the current process.
+    if (argc >= 1 && strcmp(argv[0], "cd") == 0) {
+        enum sh_cd_result result = run_cd(argc, argv);
+        if (result != SH_CD_SUCCESS) {
+            // TODO: handle error
+        }
+        return;
+    }
+
     // Handle commands that are not `exit`.
     struct sh_spawn_desc desc = {
         .job_type = job_type,

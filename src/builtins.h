@@ -46,4 +46,12 @@ enum sh_pwd_result {
 
 enum sh_pwd_result run_pwd(size_t argc, char *argv[]);
 
+enum sh_cd_result {
+    SH_CD_SUCCESS = 0,
+    SH_CD_UNEXPECTED_ARG_COUNT,
+    SH_CD_GENERIC_ERROR,
+};
+
+enum sh_cd_result run_cd(size_t argc, char *argv[]);
+
 #endif

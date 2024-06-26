@@ -146,3 +146,26 @@ enum sh_pwd_result run_pwd(size_t argc, char *argv[]) {
     free(cwd);
     return SH_PWD_SUCCESS;
 }
+
+enum sh_cd_result run_cd(size_t argc, char *argv[]) {
+    // This function should only be called when `argv[0]` is "pwd".
+    assert(argc >= 1);
+    assert(strcmp(argv[0], "cd") == 0);
+
+    // Check for unexpected arguments.
+    if (argc > 2) {
+        fprintf(stderr, "cd: unexpected argument count\n");
+        return SH_CD_UNEXPECTED_ARG_COUNT;
+    }
+
+    // Default to the user's home directory if no argument is given.
+    // It seems like `bash` also uses the `HOME` environment variable to get the
+    // home directory.
+    char *dir = argc == 2 ? argv[1] : getenv("HOME");
+    if (chdir(dir) < 0) {
+        perror("cd");
+        return SH_CD_GENERIC_ERROR;
+    }
+
+    return SH_CD_SUCCESS;
+}
