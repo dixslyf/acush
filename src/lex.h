@@ -1,6 +1,9 @@
 #ifndef LEX_H
 #define LEX_H
 
+#include <stdbool.h>
+#include <stdlib.h>
+
 /** Represents the type of a token. */
 enum sh_token_type {
     SH_TOKEN_AMP,               // &
@@ -15,7 +18,8 @@ enum sh_token_type {
     SH_TOKEN_ASTERISK,          // *
     SH_TOKEN_QUESTION,          // ?
     SH_TOKEN_SQUARE_BRACKET_L,  // [
-    SH_TOKEN_WHITESPACE,        // Whitespace.
+    SH_TOKEN_BACKSLASH,         // `\`
+    SH_TOKEN_WHITESPACE,        // A single whitespace character.
     SH_TOKEN_WORD,              // Everything else.
     SH_TOKEN_END,               // Indicates the end of a lex.
 };
@@ -33,6 +37,34 @@ struct sh_token {
 struct sh_lex_lossless_context {
     // The current character being processed in the input string.
     char const *cp;
+
+    bool finished;
+};
+
+/** Keeps track of various context information required by lexing (lossless). */
+enum sh_lex_refine_state {
+    SH_LEX_REFINE_DULL,
+    SH_LEX_REFINE_WORD_QUOTED,
+    SH_LEX_REFINE_WORD_QUOTED_END,
+    SH_LEX_REFINE_WORD_UNQUOTED,
+};
+
+struct sh_lex_refine_context {
+    enum sh_lex_refine_state state;
+
+    bool escape;
+
+    struct sh_token start_quote;
+
+    // Buffer for concatenating strings and word sections.
+    size_t catbuf_capacity;
+    size_t catbuf_len;
+    char *catbuf;
+
+    // Queue for multiple tokens.
+    size_t tokbuf_capacity;
+    size_t tokbuf_len;
+    struct sh_token *tokbuf;
 };
 
 /** Represents the result of a call to `lex_lossless()`. */
@@ -62,6 +94,8 @@ void init_lex_lossless_context(
     struct sh_lex_lossless_context *ctx_out
 );
 
+void init_lex_refine_context(struct sh_lex_refine_context *ctx_out);
+
 /**
  * Lexes the given input string into a sequence of tokens.
  *
@@ -82,6 +116,9 @@ void init_lex_lossless_context(
  */
 enum sh_lex_result
 lex_lossless(struct sh_lex_lossless_context *ctx, struct sh_token *token_out);
+
+enum sh_lex_result
+lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in);
 
 /**
  * Destroys a token.
