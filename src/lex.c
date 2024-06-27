@@ -281,10 +281,23 @@ lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
             break;
         }
 
-        // Otherwise, we just add the token's text as is.
+        // Otherwise, we need to add the token's text.
+        // However, if we're inside a quote, characters special to `glob()` need
+        // to be escaped.
+        if (ctx->state == SH_LEX_REFINE_WORD_QUOTED
+            && (token_in->type == SH_TOKEN_ASTERISK
+                || token_in->type == SH_TOKEN_QUESTION
+                || token_in->type == SH_TOKEN_SQUARE_BRACKET_L)
+            && append_to_catbuf(ctx, "\\", 1) < 0)
+        {
+            return SH_LEX_MEMORY_ERROR;
+        }
+
+        // Finally, add the text of the current token.
         if (append_to_catbuf(ctx, token_in->text, strlen(token_in->text))) {
             return SH_LEX_MEMORY_ERROR;
         }
+
         break;
     }
 
