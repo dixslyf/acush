@@ -13,10 +13,18 @@ struct sh_ast_simple_cmd {
 
 /** Represents which standard stream to redirect. */
 enum sh_redirect_type {
-    SH_REDIRECT_NONE,   /**< No redirection. */
     SH_REDIRECT_STDOUT, /**< Redirect stdout (`>`). */
     SH_REDIRECT_STDIN,  /**< Redirect stdin (`<`). */
     SH_REDIRECT_STDERR  /**< Redirect stderr (`2>`). */
+};
+
+/** Describes a redirection. */
+struct sh_redirection_desc {
+    /** The type of redirection. */
+    enum sh_redirect_type type;
+
+    /** The file path to redirect to. */
+    char *file;
 };
 
 /** Represents a shell command with redirection. */
@@ -24,11 +32,9 @@ struct sh_ast_cmd {
     /** The simple command to (potentially) redirect. */
     struct sh_ast_simple_cmd simple_cmd;
 
-    /** The type of redirection. */
-    enum sh_redirect_type redirect_type;
-
-    /** The file path to redirect to. */
-    char *redirect_file;
+    size_t redirection_capacity;
+    size_t redirection_count;
+    struct sh_redirection_desc *redirections;
 };
 
 /** Represents a shell job containing piped commands. */

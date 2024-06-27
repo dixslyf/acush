@@ -130,6 +130,7 @@ void destroy_simple_cmd(struct sh_ast_simple_cmd *simple_cmd) {
 }
 
 void destroy_cmd(struct sh_ast_cmd *cmd) {
+    free(cmd->redirections);
     struct sh_ast_simple_cmd *simple_cmd = &cmd->simple_cmd;
     destroy_simple_cmd(simple_cmd);
 }
@@ -350,55 +351,73 @@ parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *out) {
 
     struct sh_ast_cmd cmd = (struct sh_ast_cmd) {
         .simple_cmd = simple_cmd,
-        .redirect_type = SH_REDIRECT_NONE,
-        .redirect_file = NULL,
+        .redirection_capacity = 0,
+        .redirection_count = 0,
+        .redirections = NULL,
     };
 
-    // At this point, the `<`, `>` or `2>` are optional.
+    // Parse redirections.
+    while (ctx->token_idx < ctx->token_count
+           && (ctx->tokens[ctx->token_idx].type == SH_TOKEN_ANGLE_BRACKET_L
+               || ctx->tokens[ctx->token_idx].type == SH_TOKEN_ANGLE_BRACKET_R
+               || ctx->tokens[ctx->token_idx].type == SH_TOKEN_2_ANGLE_BRACKET_R
+           ))
 
-    // If there are no tokens remaining, or there are and the next is one of
-    // `<`,
-    // `>` or `2>`, then there is no redirection.
-    if (ctx->token_idx >= ctx->token_count
-        || !(
-            ctx->tokens[ctx->token_idx].type == SH_TOKEN_ANGLE_BRACKET_L
-            || ctx->tokens[ctx->token_idx].type == SH_TOKEN_ANGLE_BRACKET_R
-            || ctx->tokens[ctx->token_idx].type == SH_TOKEN_2_ANGLE_BRACKET_R
-        ))
     {
-        *out = cmd;
-        return SH_PARSE_SUCCESS;
-    }
-
-    // The next token is one of `<`, `>` or `2>`, so we need to check the token
-    // after that to get the redirect file path.
-    if (ctx->token_idx + 1 < ctx->token_count
-        && ctx->tokens[ctx->token_idx + 1].type == SH_TOKEN_WORD)
-    {
+        enum sh_redirect_type redirect_type;
         switch (ctx->tokens[ctx->token_idx].type) {
         case SH_TOKEN_ANGLE_BRACKET_L:
-            cmd.redirect_type = SH_REDIRECT_STDIN;
+            redirect_type = SH_REDIRECT_STDIN;
             break;
         case SH_TOKEN_ANGLE_BRACKET_R:
-            cmd.redirect_type = SH_REDIRECT_STDOUT;
+            redirect_type = SH_REDIRECT_STDOUT;
             break;
         case SH_TOKEN_2_ANGLE_BRACKET_R:
-            cmd.redirect_type = SH_REDIRECT_STDERR;
+            redirect_type = SH_REDIRECT_STDERR;
             break;
         default:
             assert(false);
         }
 
-        cmd.redirect_file = ctx->tokens[ctx->token_idx + 1].text;
-        *out = cmd;
-        ctx->token_idx += 2;
-        return SH_PARSE_SUCCESS;
+        ctx->token_idx++;
+        if (ctx->token_idx >= ctx->token_count) {
+            destroy_cmd(&cmd);
+            return SH_PARSE_COMMAND_FAIL;
+        }
+
+        char *redirect_file = ctx->tokens[ctx->token_idx].text;
+        ctx->token_idx++;
+
+        // Double the size of the redirections array when there is not enough
+        // space.
+        if (cmd.redirection_count == cmd.redirection_capacity) {
+            size_t new_capacity = cmd.redirection_capacity == 0
+                                      ? 2
+                                      : cmd.redirection_capacity * 2;
+
+            struct sh_redirection_desc *tmp = realloc(
+                cmd.redirections,
+                sizeof(struct sh_redirection_desc) * new_capacity
+            );
+
+            if (tmp == NULL) {
+                destroy_cmd(&cmd);
+                return SH_PARSE_MEMORY_ERROR;
+            }
+
+            cmd.redirections = tmp;
+            cmd.redirection_capacity = new_capacity;
+        }
+
+        cmd.redirections[cmd.redirection_count] = (struct sh_redirection_desc) {
+            .type = redirect_type,
+            .file = redirect_file,
+        };
+        cmd.redirection_count++;
     }
 
-    // If we've reached this point, that means there was a `<`, `>` or `2>`
-    // token, but no redirect file path.
-    destroy_cmd(&cmd);
-    return SH_PARSE_COMMAND_FAIL;
+    *out = cmd;
+    return SH_PARSE_SUCCESS;
 }
 
 enum sh_parse_result
@@ -514,8 +533,18 @@ void display_job(FILE *stream, struct sh_ast_job *job) {
 void display_cmd(FILE *stream, struct sh_ast_cmd *cmd) {
     fprintf(stream, "      COMMAND:\n");
     display_simple_cmd(stream, &cmd->simple_cmd);
-    fprintf(stream, "        redirect type: %d\n", cmd->redirect_type);
-    fprintf(stream, "        redirect file: %s\n", cmd->redirect_file);
+    for (size_t idx = 0; idx < cmd->redirection_count; idx++) {
+        fprintf(
+            stream,
+            "        redirect type: %d\n",
+            cmd->redirections[idx].type
+        );
+        fprintf(
+            stream,
+            "        redirect file: %s\n",
+            cmd->redirections[idx].file
+        );
+    }
 }
 
 void display_simple_cmd(FILE *stream, struct sh_ast_simple_cmd *simple_cmd) {

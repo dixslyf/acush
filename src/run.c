@@ -31,8 +31,8 @@ struct sh_pipe_desc {
 struct sh_spawn_desc {
     enum sh_job_type job_type;
 
-    enum sh_redirect_type redirect_type;
-    char *redirect_file;
+    size_t redirection_count;
+    struct sh_redirection_desc *redirections;
 
     size_t argc;
     char **argv;
@@ -198,8 +198,8 @@ void run_cmd(
     // Handle commands that are not `exit`.
     struct sh_spawn_desc desc = {
         .job_type = job_type,
-        .redirect_type = cmd->redirect_type,
-        .redirect_file = cmd->redirect_file,
+        .redirection_count = cmd->redirection_count,
+        .redirections = cmd->redirections,
         .argc = argc,
         .argv = argv,
         .pipe_desc = pipe_desc,
@@ -244,16 +244,17 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
         // Note that, in bash, redirection for `>`, `<` and `2>` has higher
         // priority than redirection for piping, so the redirection here will
         // "overwrite" the redirection for piping.
-        if (desc.redirect_type != SH_REDIRECT_NONE) {
-            assert(desc.redirect_file != NULL);
+        for (size_t idx = 0; idx < desc.redirection_count; idx++) {
+            struct sh_redirection_desc redir = desc.redirections[idx];
+            assert(redir.file != NULL);
 
             // Open the file to redirect to.
             // If we are redirecting stdin, then we open it read-only.
             // Otherwise, we create and open it write-only.
             int fd_to = open(
-                desc.redirect_file,
-                desc.redirect_type == SH_REDIRECT_STDIN ? O_RDONLY
-                                                        : O_CREAT | O_WRONLY,
+                redir.file,
+                redir.type == SH_REDIRECT_STDIN ? O_RDONLY
+                                                : O_CREAT | O_WRONLY | O_TRUNC,
                 0644
             );
 
@@ -261,9 +262,9 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
                 // TODO: handle error
             }
 
-            int fd_from = desc.redirect_type == SH_REDIRECT_STDOUT
+            int fd_from = redir.type == SH_REDIRECT_STDOUT
                               ? STDOUT_FILENO
-                              : (desc.redirect_type == SH_REDIRECT_STDIN
+                              : (redir.type == SH_REDIRECT_STDIN
                                      ? STDIN_FILENO
                                      : STDERR_FILENO);
 
