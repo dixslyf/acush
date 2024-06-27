@@ -536,6 +536,18 @@ int finish_word(struct sh_lex_refine_context *ctx) {
     // If there is no match, we follow bash's behaviour and treat the word
     // literally.
     if (glob_ret == GLOB_NOMATCH) {
+        // We must first remove backslashes since they are no longer needed.
+        char *pread = ctx->catbuf;
+        char *pwrite = ctx->catbuf;
+        while (*pread != '\0') {
+            if (*pread != '\\') {
+                *pwrite = *pread;
+                pwrite++;
+            }
+            pread++;
+        }
+        *pwrite = '\0';
+
         if (append_to_tokbuf(ctx, token) < 0) {
             return -1;
         }
