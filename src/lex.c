@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <glob.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,7 @@ int append_to_catbuf(
 );
 
 int append_to_tokbuf(struct sh_lex_refine_context *ctx, struct sh_token token);
+int finish_word(struct sh_lex_refine_context *ctx);
 
 void init_lex_lossless_context(
     char const *input,
@@ -207,18 +209,7 @@ lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
          || old_state == SH_LEX_REFINE_WORD_UNQUOTED)
         && (ctx->state == SH_LEX_REFINE_DULL || token_in->type == SH_TOKEN_END))
     {
-        struct sh_token token = (struct sh_token) {
-            .type = SH_TOKEN_WORD,
-            .text = ctx->catbuf,
-        };
-
-        if (append_to_tokbuf(ctx, token) < 0) {
-            return SH_LEX_MEMORY_ERROR;
-        }
-
-        ctx->catbuf_capacity = 0;
-        ctx->catbuf_len = 0;
-        ctx->catbuf = NULL;
+        finish_word(ctx);
     }
 
     switch (ctx->state) {
@@ -256,21 +247,9 @@ lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
                 if (append_to_catbuf(ctx, "2", 1) < 0) {
                     return SH_LEX_MEMORY_ERROR;
                 }
+                finish_word(ctx);
 
                 struct sh_token angle_r_tok = (struct sh_token) {
-                    .type = SH_TOKEN_WORD,
-                    .text = ctx->catbuf,
-                };
-
-                if (append_to_tokbuf(ctx, angle_r_tok) < 0) {
-                    return SH_LEX_MEMORY_ERROR;
-                }
-
-                ctx->catbuf_capacity = 0;
-                ctx->catbuf_len = 0;
-                ctx->catbuf = NULL;
-
-                angle_r_tok = (struct sh_token) {
                     .type = SH_TOKEN_ANGLE_BRACKET_R,
                     .text = ">",
                 };
@@ -314,6 +293,15 @@ lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
     }
 
     return SH_LEX_ONGOING;
+}
+
+void destroy_lex_refine_context(struct sh_lex_refine_context *ctx) {
+    free(ctx->catbuf);
+
+    for (size_t idx = 0; idx < ctx->tokbuf_len; idx++) {
+        destroy_token(&ctx->tokbuf[idx]);
+    }
+    free(ctx->tokbuf);
 }
 
 void destroy_token(struct sh_token *token) {
@@ -510,6 +498,58 @@ int append_to_tokbuf(struct sh_lex_refine_context *ctx, struct sh_token token) {
     // Append the token to the buffer.
     ctx->tokbuf[ctx->tokbuf_len] = token;
     ctx->tokbuf_len++;
+
+    return 0;
+}
+
+int finish_word(struct sh_lex_refine_context *ctx) {
+    struct sh_token token = (struct sh_token) {
+        .type = SH_TOKEN_WORD,
+        .text = ctx->catbuf,
+    };
+
+    // Expand globs.
+    glob_t pg;
+    int glob_ret = glob(ctx->catbuf, 0, NULL, &pg);
+
+    if (glob_ret == GLOB_NOSPACE) {
+        return -1;
+    }
+
+    if (glob_ret == GLOB_ABORTED) {
+        return -2;
+    }
+
+    // If there is no match, we follow bash's behaviour and treat the word
+    // literally.
+    if (glob_ret == GLOB_NOMATCH) {
+        if (append_to_tokbuf(ctx, token) < 0) {
+            return -1;
+        }
+
+        ctx->catbuf_capacity = 0;
+        ctx->catbuf_len = 0;
+        ctx->catbuf = NULL;
+        return 0;
+    }
+
+    // At this point, the `glob()` must have been successful.
+    assert(glob_ret == 0);
+    for (size_t idx = 0; idx < pg.gl_pathc; idx++) {
+        struct sh_token token = (struct sh_token) {
+            .type = SH_TOKEN_WORD,
+            .text = pg.gl_pathv[idx],
+        };
+
+        if (append_to_tokbuf(ctx, token) < 0) {
+            return -1;
+        }
+    }
+
+    ctx->catbuf_capacity = 0;
+    ctx->catbuf_len = 0;
+    free(ctx->catbuf);
+    ctx->catbuf = NULL;
 
     return 0;
 }

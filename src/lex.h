@@ -81,6 +81,9 @@ enum sh_lex_result {
 
     /** Indicates a failure to allocate memory. */
     SH_LEX_MEMORY_ERROR,
+
+    /** Indicates a failure while expanding globs. */
+    SH_LEX_GLOB_ERROR,
 };
 
 /**
@@ -119,6 +122,8 @@ lex_lossless(struct sh_lex_lossless_context *ctx, struct sh_token *token_out);
 
 enum sh_lex_result
 lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in);
+
+void destroy_lex_refine_context(struct sh_lex_refine_context *ctx);
 
 /**
  * Destroys a token.

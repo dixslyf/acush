@@ -90,7 +90,9 @@ parse(struct sh_token tokens[], size_t token_count, struct sh_ast_root *out) {
     struct sh_ast_root root = (struct sh_ast_root) {.emptiness = SH_ROOT_EMPTY};
 
     // No tokens, so an empty root.
-    if (ctx.token_count == 0) {
+    if (ctx.token_count == 0
+        || ctx.token_count >= 1 && tokens[0].type == SH_TOKEN_END)
+    {
         *out = root;
         return SH_PARSE_SUCCESS;
     }
@@ -104,7 +106,9 @@ parse(struct sh_token tokens[], size_t token_count, struct sh_ast_root *out) {
 
     // If there are still tokens remaining, that means there are tokens we don't
     // know how to parse.
-    if (ctx.token_idx < ctx.token_count) {
+    if (ctx.token_idx >= ctx.token_count
+        || tokens[ctx.token_idx].type != SH_TOKEN_END)
+    {
         destroy_ast(&root);
         return SH_PARSE_UNEXPECTED_TOKENS;
     }
