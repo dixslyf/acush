@@ -248,11 +248,44 @@ lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
     case SH_LEX_REFINE_WORD_UNQUOTED: {
         // Handle escaped characters.
         if (ctx->escape) {
-            if (append_to_catbuf(ctx, token_in->text, strlen(token_in->text))
-                < 0)
+            // Special case for `2>`. We need to escape the `2` and add it to
+            // the word, but create a separate sepcial for token `>`.
+            if (ctx->state == SH_LEX_REFINE_WORD_UNQUOTED
+                && token_in->type == SH_TOKEN_2_ANGLE_BRACKET_R)
+            {
+                if (append_to_catbuf(ctx, "2", 1) < 0) {
+                    return SH_LEX_MEMORY_ERROR;
+                }
+
+                struct sh_token angle_r_tok = (struct sh_token) {
+                    .type = SH_TOKEN_WORD,
+                    .text = ctx->catbuf,
+                };
+
+                if (append_to_tokbuf(ctx, angle_r_tok) < 0) {
+                    return SH_LEX_MEMORY_ERROR;
+                }
+
+                ctx->catbuf_capacity = 0;
+                ctx->catbuf_len = 0;
+                ctx->catbuf = NULL;
+
+                angle_r_tok = (struct sh_token) {
+                    .type = SH_TOKEN_ANGLE_BRACKET_R,
+                    .text = ">",
+                };
+
+                if (append_to_tokbuf(ctx, angle_r_tok) < 0) {
+                    return SH_LEX_MEMORY_ERROR;
+                }
+
+                // This is the only time we'll change the state from here.
+                ctx->state = SH_LEX_REFINE_DULL;
+            } else if (append_to_catbuf(ctx, token_in->text, strlen(token_in->text)) < 0)
             {
                 return SH_LEX_MEMORY_ERROR;
             }
+
             ctx->escape = false;
             break;
         }
