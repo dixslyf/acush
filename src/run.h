@@ -2,9 +2,13 @@
 #define RUN_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "parse.h"
 #include "shell.h"
+
+struct sh_ast_root;
+struct sh_shell_context;
 
 struct sh_run_result {
     size_t error_count;

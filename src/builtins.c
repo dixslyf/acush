@@ -1,12 +1,14 @@
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "builtins.h"
+#include "shell.h"
 
 bool is_builtin(char *name) {
     return strcmp(name, "exit") == 0 || strcmp(name, "history") == 0

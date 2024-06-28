@@ -1,14 +1,15 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include "builtins.h"
 #include "parse.h"
 #include "run.h"
+#include "shell.h"
 
 struct sh_pipe_desc {
     bool redirect_stdin;
