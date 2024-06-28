@@ -1,13 +1,20 @@
 #ifndef SHELL_H
 #define SHELL_H
 
+#include <stdbool.h>
 #include <stdlib.h>
 
 struct sh_shell_context {
     size_t history_capacity;
     size_t history_count;
     char **history;
+
     char *prompt; /**< The current shell prompt. */
+
+    bool should_exit;
+    union {
+        int exit_code;
+    };
 };
 
 enum sh_init_shell_context_result {
