@@ -4,24 +4,24 @@
 
 This project uses `make`. To build the shell, run the following at the project's root directory:
 
-```sh
+```
 make
 ```
 
 After building, run the shell with:
 
-```sh
+```
 build/shell
 ```
 
 To clean up build artifacts:
 
-```sh
+```
 make clean
 ```
 
 To run unit tests:
 
-```sh
+```
 make test
 ```
