@@ -14,6 +14,41 @@ bool is_builtin(char *name) {
            || strcmp(name, "cd") == 0;
 }
 
+int run_builtin(
+    struct sh_shell_context *ctx,
+    struct sh_builtin_std_fds fds,
+    size_t argc,
+    char *argv[]
+) {
+    // Handle `exit` builtin.
+    if (strcmp(argv[0], "exit") == 0) {
+        return run_exit(ctx, fds, argc, argv);
+    }
+
+    // Handle `prompt` builtin.
+    if (strcmp(argv[0], "prompt") == 0) {
+        return run_prompt(ctx, fds, argc, argv);
+    }
+
+    // Handle `cd` builtin.
+    if (strcmp(argv[0], "cd") == 0) {
+        return run_cd(fds, argc, argv);
+    }
+
+    // Handle `history` builtin.
+    if (strcmp(argv[0], "history") == 0) {
+        return run_history(ctx, fds, argc, argv);
+    }
+
+    // Handle `pwd` builtin.
+    if (strcmp(argv[0], "pwd") == 0) {
+        return run_pwd(fds, argc, argv);
+    }
+
+    // This function should not be called if `argv[0]` is not a builtin command!
+    assert(false);
+}
+
 enum sh_exit_result run_exit(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,

@@ -12,14 +12,21 @@ struct sh_builtin_std_fds {
     int stderr;
 };
 
+bool is_builtin(char *name);
+
+int run_builtin(
+    struct sh_shell_context *ctx,
+    struct sh_builtin_std_fds fds,
+    size_t argc,
+    char *argv[]
+);
+
 enum sh_exit_result {
     SH_EXIT_SUCCESS,
     SH_EXIT_NONINTEGER_EXIT_CODE,
     SH_EXIT_UNEXPECTED_ARG_COUNT,
     SH_EXIT_OUT_OF_RANGE_EXIT_CODE,
 };
-
-bool is_builtin(char *name);
 
 enum sh_exit_result run_exit(
     struct sh_shell_context *ctx,

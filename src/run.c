@@ -60,9 +60,9 @@ void run_cmd(
     struct sh_pipe_desc pipe_desc
 );
 
-int run_builtin(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
+int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
 
-pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc);
+pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
 
 struct sh_run_result
 run(struct sh_shell_context *ctx, struct sh_ast_root const *root) {
@@ -171,18 +171,19 @@ void run_cmd(
         .pipe_desc = pipe_desc,
     };
 
-    // Handle builtins.
-    if (is_builtin(argv[0])) {
+    // Handle running builtins in the foreground.
+    if (desc.job_type == SH_JOB_FG && is_builtin(argv[0])) {
         // TODO: error handling
-        run_builtin(ctx, desc);
+        run_builtin_fg(ctx, desc);
         return;
     }
 
+    // Run non-builtins. Also run background builtins.
     // TODO: write error to `result` on error
     pid_t pid = spawn(ctx, desc);
 }
 
-int run_builtin(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
+int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     // Keep track of the file descriptors of the standard streams for the
     // builtins.
     struct sh_builtin_std_fds fds = (struct sh_builtin_std_fds) {
@@ -251,53 +252,7 @@ int run_builtin(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
         }
     }
 
-    // Handle `exit` builtin.
-    if (strcmp(desc.argv[0], "exit") == 0) {
-        enum sh_exit_result
-            exit_result = run_exit(ctx, fds, desc.argc, desc.argv);
-
-        if (exit_result != SH_EXIT_SUCCESS) {
-            // TODO: write error to `result` on error
-        }
-        return 0;
-    }
-
-    // Handle `prompt` builtin.
-    if (strcmp(desc.argv[0], "prompt") == 0) {
-        enum sh_prompt_result
-            prompt_result = run_prompt(ctx, fds, desc.argc, desc.argv);
-
-        if (prompt_result != SH_PROMPT_SUCCESS) {
-            // TODO: handle error
-        }
-
-        return 0;
-    }
-
-    // Handle `cd` builtin.
-    if (strcmp(desc.argv[0], "cd") == 0) {
-        enum sh_cd_result result = run_cd(fds, desc.argc, desc.argv);
-        if (result != SH_CD_SUCCESS) {
-            // TODO: handle error
-        }
-        return 0;
-    }
-
-    // Handle `history` builtin.
-    if (strcmp(desc.argv[0], "history") == 0) {
-        enum sh_history_result
-            result = run_history(ctx, fds, desc.argc, desc.argv);
-        return 0;
-    }
-
-    // Handle `pwd` builtin.
-    if (strcmp(desc.argv[0], "pwd") == 0) {
-        enum sh_pwd_result result = run_pwd(fds, desc.argc, desc.argv);
-        if (result != SH_PWD_SUCCESS) {
-            // TODO: handle error
-        }
-        return 0;
-    }
+    run_builtin(ctx, fds, desc.argc, desc.argv);
 
     // Close pipes.
     // Like `spawn()`, we only close the pipe after executing the consumer
@@ -312,11 +267,10 @@ int run_builtin(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
 
     // FIXME: close open files
 
-    // This function should not have been called for a non-builtin.
-    assert(false);
+    return 0;
 }
 
-pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
+pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process.
@@ -381,7 +335,20 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
             }
         }
 
-        // Execute the process.
+        // Handle builtins that are run in the background.
+        if (is_builtin(desc.argv[0])) {
+            // No need to change any of these file descriptors since any
+            // redirections should already have been handled.
+            struct sh_builtin_std_fds fds = (struct sh_builtin_std_fds) {
+                .stdin = STDIN_FILENO,
+                .stdout = STDOUT_FILENO,
+                .stderr = STDERR_FILENO,
+            };
+            int exit_code = run_builtin(ctx, fds, desc.argc, desc.argv);
+            exit(exit_code);
+        }
+
+        // Handle non-builtins.
         execvp(desc.argv[0], desc.argv);
 
         // This point is only reached if `execvp` failed.
