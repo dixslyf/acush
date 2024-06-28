@@ -7,9 +7,6 @@
 #include "shell.h"
 
 struct sh_run_result {
-    bool should_exit;
-    int exit_code;
-
     size_t error_count;
     struct sh_run_error *errors;
 };

@@ -60,12 +60,13 @@ void run_cmd(
     struct sh_pipe_desc pipe_desc
 );
 
+int run_builtin(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
+
 pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc);
 
 struct sh_run_result
 run(struct sh_shell_context *ctx, struct sh_ast_root const *root) {
     struct sh_run_result result = (struct sh_run_result) {
-        .should_exit = false,
         .error_count = 0,
         .errors = NULL,
     };
@@ -141,6 +142,11 @@ void run_job_desc(
 
         // TODO: handle failure — need to close pipes
         run_cmd(ctx, result, &job->piped_cmds[idx], job_desc->type, pipe_desc);
+
+        // If `exit` was called, then we should stop any further processing.
+        if (ctx->should_exit) {
+            break;
+        }
     }
 }
 
@@ -153,49 +159,9 @@ void run_cmd(
 ) {
     size_t argc = cmd->simple_cmd.argc;
     char **argv = cmd->simple_cmd.argv;
+    assert(argc != 0);
 
-    // Handle `exit` builtin.
-    if (argc >= 1 && strcmp(argv[0], "exit") == 0) {
-        struct sh_exit_result exit_result = run_exit(argc, argv);
-
-        if (exit_result.type != SH_EXIT_SUCCESS) {
-            // TODO: write error to `result` on error
-            return;
-        }
-
-        // Don't overwrite the exit code for a previous exit call since that
-        // call should have priority.
-        if (result->should_exit) {
-            return;
-        }
-
-        assert(exit_result.type == SH_EXIT_SUCCESS);
-        result->should_exit = true;
-        result->exit_code = exit_result.exit_code;
-        return;
-    }
-
-    if (argc >= 1 && strcmp(argv[0], "prompt") == 0) {
-        enum sh_prompt_result prompt_result = run_prompt(ctx, argc, argv);
-
-        if (prompt_result != SH_PROMPT_SUCCESS) {
-            // TODO: handle error
-        }
-        return;
-    }
-
-    // Note: This must be done here and not in `spawn()` because, if we did it
-    // in `spawn()`, then the current directory would be changed for the child
-    // process, not the current process.
-    if (argc >= 1 && strcmp(argv[0], "cd") == 0) {
-        enum sh_cd_result result = run_cd(argc, argv);
-        if (result != SH_CD_SUCCESS) {
-            // TODO: handle error
-        }
-        return;
-    }
-
-    // Handle commands that are not `exit`.
+    // Create a description for spawning the command.
     struct sh_spawn_desc desc = {
         .job_type = job_type,
         .redirection_count = cmd->redirection_count,
@@ -205,8 +171,149 @@ void run_cmd(
         .pipe_desc = pipe_desc,
     };
 
+    // Handle builtins.
+    if (is_builtin(argv[0])) {
+        // TODO: error handling
+        run_builtin(ctx, desc);
+        return;
+    }
+
     // TODO: write error to `result` on error
     pid_t pid = spawn(ctx, desc);
+}
+
+int run_builtin(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
+    // Keep track of the file descriptors of the standard streams for the
+    // builtins.
+    struct sh_builtin_std_fds fds = (struct sh_builtin_std_fds) {
+        .stdin = STDIN_FILENO,
+        .stdout = STDOUT_FILENO,
+        .stderr = STDERR_FILENO,
+    };
+
+    // Handle redirection of stdin for piping.
+    if (desc.pipe_desc.redirect_stdin) {
+        // Close the write end.
+        // We can close this safely because the previous command would already
+        // have inherited the write end of the pipe if it was spawned in a child
+        // process.
+        if (close(desc.pipe_desc.write_fd_left) < 0) {
+            // TODO: handle error
+        }
+
+        // Redirect stdin to the read end.
+        fds.stdin = desc.pipe_desc.read_fd_left;
+    }
+
+    // Handle redirection of stdout for piping.
+    // NOTE: We need to be careful here. We must *not* close the read end of
+    // the pipe yet because the next command might need to spawn in a child
+    // process and inherit it. If we closed it now, the next process would not
+    // inherit the file. Instead, the closing of the read end of the pipe is
+    // handled at the end of `spawn()`.
+    if (desc.pipe_desc.redirect_stdout) {
+        // Redirect stdout to the write end.
+        fds.stdout = desc.pipe_desc.write_fd_right;
+    }
+
+    // Handle redirection for `>`, `<` and `2>`.
+    // Note that, in bash, redirection for `>`, `<` and `2>` has higher
+    // priority than redirection for piping, so the redirection here will
+    // "overwrite" the redirection for piping.
+    for (size_t idx = 0; idx < desc.redirection_count; idx++) {
+        struct sh_redirection_desc redir = desc.redirections[idx];
+        assert(redir.file != NULL);
+
+        // Open the file to redirect to.
+        // If we are redirecting stdin, then we open it read-only.
+        // Otherwise, we create and open it write-only.
+        int fd_to = open(
+            redir.file,
+            redir.type == SH_REDIRECT_STDIN ? O_RDONLY
+                                            : O_CREAT | O_WRONLY | O_TRUNC,
+            0644
+        );
+
+        if (fd_to < 0) {
+            // TODO: handle error
+        }
+
+        switch (redir.type) {
+        case SH_REDIRECT_STDOUT:
+            fds.stdout = fd_to;
+            break;
+        case SH_REDIRECT_STDIN:
+            fds.stdin = fd_to;
+            break;
+        case SH_REDIRECT_STDERR:
+            fds.stderr = fd_to;
+            break;
+        }
+    }
+
+    // Handle `exit` builtin.
+    if (strcmp(desc.argv[0], "exit") == 0) {
+        enum sh_exit_result
+            exit_result = run_exit(ctx, fds, desc.argc, desc.argv);
+
+        if (exit_result != SH_EXIT_SUCCESS) {
+            // TODO: write error to `result` on error
+        }
+        return 0;
+    }
+
+    // Handle `prompt` builtin.
+    if (strcmp(desc.argv[0], "prompt") == 0) {
+        enum sh_prompt_result
+            prompt_result = run_prompt(ctx, fds, desc.argc, desc.argv);
+
+        if (prompt_result != SH_PROMPT_SUCCESS) {
+            // TODO: handle error
+        }
+
+        return 0;
+    }
+
+    // Handle `cd` builtin.
+    if (strcmp(desc.argv[0], "cd") == 0) {
+        enum sh_cd_result result = run_cd(fds, desc.argc, desc.argv);
+        if (result != SH_CD_SUCCESS) {
+            // TODO: handle error
+        }
+        return 0;
+    }
+
+    // Handle `history` builtin.
+    if (strcmp(desc.argv[0], "history") == 0) {
+        enum sh_history_result
+            result = run_history(ctx, fds, desc.argc, desc.argv);
+        return 0;
+    }
+
+    // Handle `pwd` builtin.
+    if (strcmp(desc.argv[0], "pwd") == 0) {
+        enum sh_pwd_result result = run_pwd(fds, desc.argc, desc.argv);
+        if (result != SH_PWD_SUCCESS) {
+            // TODO: handle error
+        }
+        return 0;
+    }
+
+    // Close pipes.
+    // Like `spawn()`, we only close the pipe after executing the consumer
+    // side, not after executing the consumer. Hence, we only close the pipe for
+    // `desc.pipe_desc.redirect_stdin`.
+    if (desc.pipe_desc.redirect_stdin) {
+        if (close(desc.pipe_desc.read_fd_left) < 0) {
+            // TODO: handle error
+        }
+        // No need to close the write end since we already closed it earlier.
+    }
+
+    // FIXME: close open files
+
+    // This function should not have been called for a non-builtin.
+    assert(false);
 }
 
 pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
@@ -274,25 +381,7 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
             }
         }
 
-        // Handle `history` builtin.
-        if (strcmp(desc.argv[0], "history") == 0) {
-            enum sh_history_result result = run_history(
-                ctx,
-                desc.argc,
-                desc.argv
-            );
-            exit(result);
-        }
-
-        if (strcmp(desc.argv[0], "pwd") == 0) {
-            enum sh_pwd_result result = run_pwd(desc.argc, desc.argv);
-            if (result != SH_PWD_SUCCESS) {
-                // TODO: handle error
-            }
-            exit(result);
-        }
-
-        // Handle non-builtins.
+        // Execute the process.
         execvp(desc.argv[0], desc.argv);
 
         // This point is only reached if `execvp` failed.
@@ -325,6 +414,8 @@ pid_t spawn(struct sh_shell_context const *ctx, struct sh_spawn_desc desc) {
                 // TODO: handle error
             }
         }
+
+        // FIXME: close open files
 
         // Only wait if the job is a foreground job.
         // Background jobs are consumed by the signal handler for `SIGCHLD`
