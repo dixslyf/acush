@@ -26,8 +26,9 @@ enum sh_token_type {
     SH_TOKEN_SQUARE_BRACKET_L,  // [
     SH_TOKEN_BACKSLASH,         // `\`
     SH_TOKEN_WHITESPACE,        // A single whitespace character.
-    SH_TOKEN_WORD,              // Everything else.
-    SH_TOKEN_END,               // Indicates the end of a lex.
+    SH_TOKEN_TEXT,              // Everything else.
+    SH_TOKEN_WORD, // Combination of consecutive quoted strings and text.
+    SH_TOKEN_END,  // Indicates the end of a lex.
 };
 
 /**

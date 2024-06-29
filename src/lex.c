@@ -47,27 +47,27 @@ bool is_ws_delimiter(char const *cp);
 bool is_special(char const *cp);
 
 /**
- * Returns `true` if `cp` is a word boundary. Otherwise, returns `false`.
+ * Returns `true` if `cp` is a text boundary. Otherwise, returns `false`.
  *
- * `cp` is a word boundary if any of the following evaluate to `true`:
+ * `cp` is a text boundary if any of the following evaluate to `true`:
  *   - `is_ws_delimiter(cp)`
  *   - `is_special(cp)`
  *   - `*cp == '\0'`
  *
  * @param cp the character pointer to check
- * @return `true` if `cp` represents a word boundary; otherwise, `false`
+ * @return `true` if `cp` represents a text boundary; otherwise, `false`
  */
-bool is_word_boundary(char const *cp);
+bool is_text_boundary(char const *cp);
 
 /**
- * Returns `true` if `cp` is not a word boundary. Otherwise, returns `false`.
+ * Returns `true` if `cp` is not a text boundary. Otherwise, returns `false`.
  *
- * See `is_word_boundary()`.
+ * See `is_text_boundary()`.
  *
  * @param cp the character pointer to check
- * @return `true` if `cp` is not a word boundary; otherwise, `false`
+ * @return `true` if `cp` is not a text boundary; otherwise, `false`
  */
-bool is_word_char(char const *cp);
+bool is_text_char(char const *cp);
 
 int append_to_catbuf(
     struct sh_lex_context *ctx,
@@ -135,8 +135,7 @@ raw_lex(struct sh_raw_lex_context *ctx, struct sh_token *token_out) {
         return SH_LEX_ONGOING;
     }
 
-    // At this point, the token is a word. (Technically, "word" isn't the right
-    // term since words can be like `"foo"'bar'baz`, but that is not important.)
+    // At this point, the token is a text token.
 
     // Keep track of the start of the token.
     char const *text_start = ctx->cp;
@@ -144,7 +143,7 @@ raw_lex(struct sh_raw_lex_context *ctx, struct sh_token *token_out) {
     // Find the end of the token.
     do {
         ctx->cp++;
-    } while (is_word_char(ctx->cp));
+    } while (is_text_char(ctx->cp));
 
     // Allocate memory for the token's text.
     size_t text_len = ctx->cp - text_start;
@@ -163,7 +162,7 @@ raw_lex(struct sh_raw_lex_context *ctx, struct sh_token *token_out) {
     // pointing to the next unseen character.
 
     *token_out = (struct sh_token) {
-        .type = SH_TOKEN_WORD,
+        .type = SH_TOKEN_TEXT,
         .text = text,
     };
 
@@ -190,7 +189,7 @@ lex(struct sh_lex_context *ctx, struct sh_token const *token_in) {
     } else if (old_state == SH_LEX_REFINE_WORD_QUOTED) {
         // No state transition — the only way to leave the quoted state is to
         // see the end quote.
-    } else if (token_in->type == SH_TOKEN_WORD || token_in->type == SH_TOKEN_BACKSLASH || token_in->type == SH_TOKEN_ASTERISK || token_in->type == SH_TOKEN_QUESTION || token_in->type == SH_TOKEN_SQUARE_BRACKET_L)
+    } else if (token_in->type == SH_TOKEN_TEXT || token_in->type == SH_TOKEN_BACKSLASH || token_in->type == SH_TOKEN_ASTERISK || token_in->type == SH_TOKEN_QUESTION || token_in->type == SH_TOKEN_SQUARE_BRACKET_L)
     {
         ctx->state = SH_LEX_REFINE_WORD_UNQUOTED;
     } else if (token_in->type == SH_TOKEN_DOUBLE_QUOTE || token_in->type == SH_TOKEN_SINGLE_QUOTE)
@@ -318,9 +317,9 @@ void destroy_lex_context(struct sh_lex_context *ctx) {
 }
 
 void destroy_token(struct sh_token *token) {
-    // Only the `text` for `SH_TOKEN_WORDS` is dynamically allocated. Other
-    // token types use static allocation.
-    if (token->type == SH_TOKEN_WORD) {
+    // Only the `text` for `SH_TOKEN_TEXT` and `SH_TOKEN_WORD` are dynamically
+    // allocated. Other token types use static allocation.
+    if (token->type == SH_TOKEN_TEXT || token->type == SH_TOKEN_WORD) {
         free(token->text);
         token->text = NULL;
     }
@@ -456,11 +455,11 @@ bool is_quote(char const *cp) { return *cp == '"' || *cp == '\''; }
 
 bool is_special(char const *cp) { return strchr("&;|<>2!'\"*?[\\", *cp); }
 
-bool is_word_boundary(char const *cp) {
+bool is_text_boundary(char const *cp) {
     return is_ws_delimiter(cp) || is_special(cp) || *cp == '\0';
 }
 
-bool is_word_char(char const *cp) { return !is_word_boundary(cp); }
+bool is_text_char(char const *cp) { return !is_text_boundary(cp); }
 
 int append_to_catbuf(
     struct sh_lex_context *ctx,
