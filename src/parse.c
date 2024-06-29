@@ -90,9 +90,7 @@ parse(struct sh_token tokens[], size_t token_count, struct sh_ast_root *out) {
     struct sh_ast_root root = (struct sh_ast_root) {.emptiness = SH_ROOT_EMPTY};
 
     // No tokens, so an empty root.
-    if (ctx.token_count == 0
-        || ctx.token_count >= 1 && tokens[0].type == SH_TOKEN_END)
-    {
+    if (ctx.token_count == 0 || tokens[0].type == SH_TOKEN_END) {
         *out = root;
         return SH_PARSE_SUCCESS;
     }
@@ -158,8 +156,10 @@ void destroy_cmd_line(struct sh_ast_cmd_line *cmd_line) {
 
 enum sh_parse_result
 parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *out) {
-    // No tokens to parse.
-    if (ctx->token_idx >= ctx->token_count) {
+    // No tokens left to parse.
+    if (ctx->token_idx >= ctx->token_count
+        || ctx->tokens[ctx->token_idx].type == SH_TOKEN_END)
+    {
         return SH_PARSE_UNEXPECTED_END;
     }
 
@@ -236,9 +236,12 @@ parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *out) {
         }
 
         // Don't try parsing further if there are no more tokens.
-        if (ctx->token_idx >= ctx->token_count) {
+        if (ctx->token_idx >= ctx->token_count
+            || ctx->tokens[ctx->token_idx].type == SH_TOKEN_END)
+        {
             break;
         }
+
         parse_job_result = parse_job(ctx, &job);
     }
 
@@ -273,7 +276,9 @@ parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *out) {
 enum sh_parse_result
 parse_job(struct sh_parse_context *ctx, struct sh_ast_job *out) {
     // No tokens to parse.
-    if (ctx->token_idx >= ctx->token_count) {
+    if (ctx->token_idx >= ctx->token_count
+        || ctx->tokens[ctx->token_idx].type == SH_TOKEN_END)
+    {
         return SH_PARSE_UNEXPECTED_END;
     }
 
@@ -339,7 +344,9 @@ parse_job(struct sh_parse_context *ctx, struct sh_ast_job *out) {
 enum sh_parse_result
 parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *out) {
     // No tokens to parse.
-    if (ctx->token_idx >= ctx->token_count) {
+    if (ctx->token_idx >= ctx->token_count
+        || ctx->tokens[ctx->token_idx].type == SH_TOKEN_END)
+    {
         return SH_PARSE_UNEXPECTED_END;
     }
 
@@ -384,7 +391,9 @@ parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *out) {
         }
 
         ctx->token_idx++;
-        if (ctx->token_idx >= ctx->token_count) {
+        if (ctx->token_idx >= ctx->token_count
+            || ctx->tokens[ctx->token_idx].type == SH_TOKEN_END)
+        {
             destroy_cmd(&cmd);
             return SH_PARSE_COMMAND_FAIL;
         }
@@ -427,7 +436,9 @@ parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *out) {
 enum sh_parse_result
 parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out) {
     // No tokens to parse.
-    if (ctx->token_idx >= ctx->token_count) {
+    if (ctx->token_idx >= ctx->token_count
+        || ctx->tokens[ctx->token_idx].type == SH_TOKEN_END)
+    {
         return SH_PARSE_UNEXPECTED_END;
     }
 
