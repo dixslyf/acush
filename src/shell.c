@@ -56,46 +56,39 @@ int main() {
 
         add_to_history(&sh_ctx, line);
 
-        struct sh_lex_lossless_context lex_lossless_ctx;
-        init_lex_lossless_context(line, &lex_lossless_ctx);
+        struct sh_raw_lex_context raw_lex_ctx;
+        init_raw_lex_context(line, &raw_lex_ctx);
 
-        struct sh_lex_refine_context lex_refine_ctx;
-        init_lex_refine_context(&lex_refine_ctx);
+        struct sh_lex_context lex_ctx;
+        init_lex_context(&lex_ctx);
 
-        struct sh_token token_lossless;
-        enum sh_lex_result lex_result_lossless;
-        enum sh_lex_result lex_result_refine;
+        struct sh_token raw_token;
+        enum sh_lex_result raw_lex_result;
+        enum sh_lex_result lex_result;
         while (true) {
-            lex_result_lossless = lex_lossless(
-                &lex_lossless_ctx,
-                &token_lossless
-            );
-
-            if (lex_result_lossless != SH_LEX_ONGOING) {
+            raw_lex_result = raw_lex(&raw_lex_ctx, &raw_token);
+            if (raw_lex_result != SH_LEX_ONGOING) {
                 break;
             }
 
-            lex_result_refine = lex_refine(&lex_refine_ctx, &token_lossless);
-            destroy_token(&token_lossless);
-
-            if (lex_result_refine != SH_LEX_ONGOING
-                && lex_result_refine != SH_LEX_ONGOING)
-            {
+            lex_result = lex(&lex_ctx, &raw_token);
+            destroy_token(&raw_token);
+            if (lex_result != SH_LEX_ONGOING && lex_result != SH_LEX_ONGOING) {
                 break;
             }
         }
 
-        if (lex_result_lossless == SH_LEX_MEMORY_ERROR
-            || lex_result_refine == SH_LEX_MEMORY_ERROR)
+        if (raw_lex_result == SH_LEX_MEMORY_ERROR
+            || lex_result == SH_LEX_MEMORY_ERROR)
         {
             printf("error: memory failure\n");
-        } else if (lex_result_refine == SH_LEX_UNTERMINATED_QUOTE) {
+        } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
             printf("error: unterminated quote\n");
         } else {
             struct sh_ast_root ast;
             enum sh_parse_result parse_result = parse(
-                lex_refine_ctx.tokbuf,
-                lex_refine_ctx.tokbuf_len,
+                lex_ctx.tokbuf,
+                lex_ctx.tokbuf_len,
                 &ast
             );
 
@@ -112,7 +105,7 @@ int main() {
             }
         }
 
-        destroy_lex_refine_context(&lex_refine_ctx);
+        destroy_lex_context(&lex_ctx);
 
         // We don't free the line since it is kept in the history.
     }

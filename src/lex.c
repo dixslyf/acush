@@ -70,24 +70,24 @@ bool is_word_boundary(char const *cp);
 bool is_word_char(char const *cp);
 
 int append_to_catbuf(
-    struct sh_lex_refine_context *ctx,
+    struct sh_lex_context *ctx,
     char const *text,
     size_t text_len
 );
 
-int append_to_tokbuf(struct sh_lex_refine_context *ctx, struct sh_token token);
-int finish_word(struct sh_lex_refine_context *ctx);
+int append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token);
+int finish_word(struct sh_lex_context *ctx);
 
-void init_lex_lossless_context(
+void init_raw_lex_context(
     char const *input,
-    struct sh_lex_lossless_context *ctx_out
+    struct sh_raw_lex_context *ctx_out
 ) {
     ctx_out->cp = input;
     ctx_out->finished = false;
 }
 
-void init_lex_refine_context(struct sh_lex_refine_context *ctx_out) {
-    *ctx_out = (struct sh_lex_refine_context) {
+void init_lex_context(struct sh_lex_context *ctx_out) {
+    *ctx_out = (struct sh_lex_context) {
         .state = SH_LEX_REFINE_DULL,
         .escape = false,
 
@@ -102,7 +102,7 @@ void init_lex_refine_context(struct sh_lex_refine_context *ctx_out) {
 }
 
 enum sh_lex_result
-lex_lossless(struct sh_lex_lossless_context *ctx, struct sh_token *token_out) {
+raw_lex(struct sh_raw_lex_context *ctx, struct sh_token *token_out) {
     if (ctx->finished) {
         return SH_LEX_END;
     }
@@ -171,9 +171,9 @@ lex_lossless(struct sh_lex_lossless_context *ctx, struct sh_token *token_out) {
 }
 
 enum sh_lex_result
-lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
+lex(struct sh_lex_context *ctx, struct sh_token const *token_in) {
     // Determine which state to change to.
-    enum sh_lex_refine_state old_state = ctx->state;
+    enum sh_lex_state old_state = ctx->state;
     if (ctx->escape) {
         // Don't do any state transitions if we're escaping the current token.
         assert(
@@ -308,7 +308,7 @@ lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in) {
     return SH_LEX_ONGOING;
 }
 
-void destroy_lex_refine_context(struct sh_lex_refine_context *ctx) {
+void destroy_lex_context(struct sh_lex_context *ctx) {
     free(ctx->catbuf);
 
     for (size_t idx = 0; idx < ctx->tokbuf_len; idx++) {
@@ -463,7 +463,7 @@ bool is_word_boundary(char const *cp) {
 bool is_word_char(char const *cp) { return !is_word_boundary(cp); }
 
 int append_to_catbuf(
-    struct sh_lex_refine_context *ctx,
+    struct sh_lex_context *ctx,
     char const *text,
     size_t text_len
 ) {
@@ -487,7 +487,7 @@ int append_to_catbuf(
     return 0;
 }
 
-int append_to_tokbuf(struct sh_lex_refine_context *ctx, struct sh_token token) {
+int append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token) {
     // Grow the buffer if needed.
     // `+ 1` for null character.
     if (ctx->tokbuf_len + 1 > ctx->tokbuf_capacity) {
@@ -515,7 +515,7 @@ int append_to_tokbuf(struct sh_lex_refine_context *ctx, struct sh_token token) {
     return 0;
 }
 
-int finish_word(struct sh_lex_refine_context *ctx) {
+int finish_word(struct sh_lex_context *ctx) {
     struct sh_token token = (struct sh_token) {
         .type = SH_TOKEN_WORD,
         .text = ctx->catbuf,

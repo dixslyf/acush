@@ -1,3 +1,9 @@
+/**
+ * @file lex.h
+ *
+ * Declarations for lexing.
+ */
+
 #ifndef LEX_H
 #define LEX_H
 
@@ -25,43 +31,50 @@ enum sh_token_type {
 };
 
 /**
- * Represents a token, represented as a pair consisting of the token's type and
- * text content.
+ * Represents a token.
+ *
+ * Each token is a pair consisting of its type and text content.
  */
 struct sh_token {
     enum sh_token_type type;
     char *text;
 };
 
-/** Keeps track of various context information required by lexing (lossless). */
-struct sh_lex_lossless_context {
-    // The current character being processed in the input string.
+/** Keeps track of context information required by a raw (lossless) lex. */
+struct sh_raw_lex_context {
+    /** The current character being processed in the input string. */
     char const *cp;
 
+    /** Keeps track of whether lexing has ended. */
     bool finished;
 };
 
-/** Keeps track of various context information required by lexing (lossless). */
-enum sh_lex_refine_state {
-    SH_LEX_REFINE_DULL,
-    SH_LEX_REFINE_WORD_QUOTED,
-    SH_LEX_REFINE_WORD_QUOTED_END,
-    SH_LEX_REFINE_WORD_UNQUOTED,
+/** Represents the possible states of the lexer. */
+enum sh_lex_state {
+    SH_LEX_REFINE_DULL, /**< Not in a quoted string, unquoted section of a
+                           word or at the closing quote for a string. */
+    SH_LEX_REFINE_WORD_QUOTED,     /**< In a quoted string. */
+    SH_LEX_REFINE_WORD_QUOTED_END, /**< At the closing quote for a string. */
+    SH_LEX_REFINE_WORD_UNQUOTED,   /**< In an unquoted section of a word. */
 };
 
-struct sh_lex_refine_context {
-    enum sh_lex_refine_state state;
+/** Keeps track of various context information required by a lex. */
+struct sh_lex_context {
+    /** The current state of the lexer. */
+    enum sh_lex_state state;
 
+    /** Whether the (first character of the) next token should be escaped. */
     bool escape;
 
+    /** Keeps track of the start quote type (' or ") when in a quoted string */
     struct sh_token start_quote;
 
-    // Buffer for concatenating strings and word sections.
+    /** Buffer for concatenating strings and word sections. */
     size_t catbuf_capacity;
     size_t catbuf_len;
     char *catbuf;
 
-    // Queue for multiple tokens.
+    /** Buffer for storing the output tokens. */
     size_t tokbuf_capacity;
     size_t tokbuf_len;
     struct sh_token *tokbuf;
@@ -87,17 +100,17 @@ enum sh_lex_result {
 };
 
 /**
- * Initialises a lex (lossless) context for the given input string.
+ * Initialises a raw (lossless) lex context for the given input string.
  *
  * @param input the input string
  * @param ctx_out a pointer to the context to initialise
  */
-void init_lex_lossless_context(
+void init_raw_lex_context(
     char const *input,
-    struct sh_lex_lossless_context *ctx_out
+    struct sh_raw_lex_context *ctx_out
 );
 
-void init_lex_refine_context(struct sh_lex_refine_context *ctx_out);
+void init_lex_context(struct sh_lex_context *ctx_out);
 
 /**
  * Lexes the given input string into a sequence of tokens.
@@ -105,25 +118,45 @@ void init_lex_refine_context(struct sh_lex_refine_context *ctx_out);
  * The lex is performed losslessly. That is, it is possible to rebuild the
  * original input exactly from the resulting tokens.
  *
- * This function should be called with a lex context created by
- * `init_lex_lossless_context()`. Each lex should have this function should be
- * called multiple times with the same context. A token is written to
- * `token_out` on every call.
+ * This function is reentrant and should be called with a lex context created by
+ * `init_raw_lex_context()`. Each lex should have this function called multiple
+ * times with the same context. A token is written to `token_out` on every call.
  *
  * For the return value, see `enum sh_lex_result`.
  *
- * @param ctx the lex (lossless) context
+ * @param ctx the raw lex context
  * @param token_out a pointer to write the token to
  *
  * @return the result of the current iteration
  */
 enum sh_lex_result
-lex_lossless(struct sh_lex_lossless_context *ctx, struct sh_token *token_out);
+raw_lex(struct sh_raw_lex_context *ctx, struct sh_token *token_out);
 
+/**
+ * Refines a sequence of raw tokens created by `raw_lex()`.
+ *
+ * This function filters out whitespace tokens, combines quotes and text
+ * into words, and expands globs.
+ *
+ * Like `raw_lex()`, this function is reentrant and should be called with the
+ * same lex context for each lex. Input tokens are specified to the `token_in`
+ * parameter one by one in separate calls to this function. The calls should be
+ * made in the same order of the input token sequence.
+ *
+ * @param ctx the lex context
+ * @param token_in a pointer to write the token to
+ *
+ * @return the result of the current iteration
+ */
 enum sh_lex_result
-lex_refine(struct sh_lex_refine_context *ctx, struct sh_token const *token_in);
+lex(struct sh_lex_context *ctx, struct sh_token const *token_in);
 
-void destroy_lex_refine_context(struct sh_lex_refine_context *ctx);
+/**
+ * Destroys the given lex context.
+ *
+ * @param ctx the lex context to destroy
+ */
+void destroy_lex_context(struct sh_lex_context *ctx);
 
 /**
  * Destroys a token.
