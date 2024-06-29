@@ -10,7 +10,7 @@
 #include "builtins.h"
 #include "shell.h"
 
-bool is_builtin(char *name) {
+bool is_builtin(char const *name) {
     return strcmp(name, "exit") == 0 || strcmp(name, "history") == 0
            || strcmp(name, "prompt") == 0 || strcmp(name, "pwd") == 0
            || strcmp(name, "cd") == 0;
@@ -20,7 +20,7 @@ int run_builtin(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 ) {
     // Handle `exit` builtin.
     if (strcmp(argv[0], "exit") == 0) {
@@ -55,7 +55,7 @@ enum sh_exit_result run_exit(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 ) {
     // This function should only be called when `argv[0]` is "exit".
     assert(argc >= 1);
@@ -76,7 +76,7 @@ enum sh_exit_result run_exit(
     }
 
     // Convert the exit code string into an integer.
-    char *exit_code_str = argv[1];
+    char const *exit_code_str = argv[1];
     char *endptr;
     long exit_code = strtol(exit_code_str, &endptr, 10);
 
@@ -102,7 +102,7 @@ enum sh_history_result run_history(
     struct sh_shell_context const *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 ) {
     assert(argc >= 1);
     assert(strcmp(argv[0], "history") == 0);
@@ -123,7 +123,7 @@ enum sh_prompt_result run_prompt(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 ) {
     assert(argc >= 1);
     assert(strcmp(argv[0], "prompt") == 0);
@@ -152,7 +152,7 @@ enum sh_prompt_result run_prompt(
 }
 
 enum sh_pwd_result
-run_pwd(struct sh_builtin_std_fds fds, size_t argc, char *argv[]) {
+run_pwd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
     // This function should only be called when `argv[0]` is "pwd".
     assert(argc >= 1);
     assert(strcmp(argv[0], "pwd") == 0);
@@ -200,7 +200,7 @@ run_pwd(struct sh_builtin_std_fds fds, size_t argc, char *argv[]) {
 }
 
 enum sh_cd_result
-run_cd(struct sh_builtin_std_fds fds, size_t argc, char *argv[]) {
+run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
     // This function should only be called when `argv[0]` is "pwd".
     assert(argc >= 1);
     assert(strcmp(argv[0], "cd") == 0);
@@ -214,7 +214,7 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char *argv[]) {
     // Default to the user's home directory if no argument is given.
     // It seems like `bash` also uses the `HOME` environment variable to get the
     // home directory.
-    char *dir = argc == 2 ? argv[1] : getenv("HOME");
+    char const *dir = argc == 2 ? argv[1] : getenv("HOME");
     if (chdir(dir) < 0) {
         dprintf(fds.stderr, "cd: %s\n", strerror(errno));
         return SH_CD_GENERIC_ERROR;

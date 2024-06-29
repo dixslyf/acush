@@ -320,128 +320,86 @@ void destroy_token(struct sh_token *token) {
     // Only the `text` for `SH_TOKEN_TEXT` and `SH_TOKEN_WORD` are dynamically
     // allocated. Other token types use static allocation.
     if (token->type == SH_TOKEN_TEXT || token->type == SH_TOKEN_WORD) {
-        free(token->text);
+        // NOTE: This is a safe cast since we are no longer using it. Strangely,
+        // `free()` takes in a non-const pointer. Linus Torvalds (creator of
+        // Linux) seems to agree that `free()` shouldn't take in a non-const
+        // pointer.
+        free((char *) token->text);
         token->text = NULL;
     }
 }
 
 bool lex_special(char const *cp, struct sh_token *token_out) {
+    static char const CHARS[] = "&;!|<>'\"*?[\\";
+    static enum sh_token_type const TOKEN_TYPES[] = {
+        SH_TOKEN_AMP,
+        SH_TOKEN_SEMICOLON,
+        SH_TOKEN_EXCLAM,
+        SH_TOKEN_PIPE,
+        SH_TOKEN_ANGLE_BRACKET_L,
+        SH_TOKEN_ANGLE_BRACKET_R,
+        SH_TOKEN_SINGLE_QUOTE,
+        SH_TOKEN_DOUBLE_QUOTE,
+        SH_TOKEN_ASTERISK,
+        SH_TOKEN_QUESTION,
+        SH_TOKEN_SQUARE_BRACKET_L,
+        SH_TOKEN_BACKSLASH,
+    };
+    static char const *const STRINGS[] =
+        {"&", ";", "!", "|", "<", ">", "'", "\"", "*", "?", "[", "\\"};
+
     struct sh_token token;
-    switch (*cp) {
-    case '&':
-        token.type = SH_TOKEN_AMP;
-        token.text = "&";
-        break;
 
-    case ';':
-        token.type = SH_TOKEN_SEMICOLON;
-        token.text = ";";
-        break;
+    // Special case for `2>` since it consists of multiple characters.
+    if (*cp == '2' && *(cp + 1) == '>') {
+        token.type = SH_TOKEN_2_ANGLE_BRACKET_R;
+        token.text = "2>";
+        *token_out = token;
+        return true;
+    }
 
-    case '!':
-        token.type = SH_TOKEN_EXCLAM;
-        token.text = "!";
-        break;
-
-    case '|':
-        token.type = SH_TOKEN_PIPE;
-        token.text = "|";
-        break;
-
-    case '<':
-        token.type = SH_TOKEN_ANGLE_BRACKET_L;
-        token.text = "<";
-        break;
-
-    case '>':
-        token.type = SH_TOKEN_ANGLE_BRACKET_R;
-        token.text = ">";
-        break;
-
-    case '2':
-        if (*(cp + 1) == '>') {
-            token.type = SH_TOKEN_2_ANGLE_BRACKET_R;
-            token.text = "2>";
-            break;
-        }
-        return false;
-
-    case '\'':
-        token.type = SH_TOKEN_SINGLE_QUOTE;
-        token.text = "'";
-        break;
-
-    case '"':
-        token.type = SH_TOKEN_DOUBLE_QUOTE;
-        token.text = "\"";
-        break;
-
-    case '*':
-        token.type = SH_TOKEN_ASTERISK;
-        token.text = "*";
-        break;
-
-    case '?':
-        token.type = SH_TOKEN_QUESTION;
-        token.text = "?";
-        break;
-
-    case '[':
-        token.type = SH_TOKEN_SQUARE_BRACKET_L;
-        token.text = "[";
-        break;
-
-    case '\\':
-        token.type = SH_TOKEN_BACKSLASH;
-        token.text = "\\";
-        break;
-
-    default:
-        assert(!is_special(cp));
+    // Check if the character is a special character.
+    char *c = strchr(CHARS, *cp);
+    if (c == NULL) {
         return false;
     }
+
+    // At this point, the character must be a special character.
+    assert(is_special(cp));
+
+    // Get the index of the character within `CHARS` so that we can index into
+    // `STRINGS` to get the corresponding string.
+    size_t idx = c - CHARS;
+    token.type = TOKEN_TYPES[idx];
+    char const *str = STRINGS[idx];
+    token.text = str;
 
     *token_out = token;
     return true;
 }
 
 bool lex_whitespace(char const *cp, struct sh_token *token_out) {
-    struct sh_token token;
-    switch (*cp) {
-    case ' ':
-        token.type = SH_TOKEN_WHITESPACE;
-        token.text = " ";
-        break;
+    // For mapping each whitespace character to a string.
+    static char const CHARS[] = " \n\t\f\r\v";
+    static char const *STRINGS[] = {" ", "\n", "\t", "\f", "\r", "\v"};
 
-    case '\n':
-        token.type = SH_TOKEN_WHITESPACE;
-        token.text = "\n";
-        break;
-
-    case '\t':
-        token.type = SH_TOKEN_WHITESPACE;
-        token.text = "\t";
-        break;
-
-    case '\f':
-        token.type = SH_TOKEN_WHITESPACE;
-        token.text = "\f";
-        break;
-
-    case '\r':
-        token.type = SH_TOKEN_WHITESPACE;
-        token.text = "\r";
-        break;
-
-    case '\v':
-        token.type = SH_TOKEN_WHITESPACE;
-        token.text = "\v";
-        break;
-
-    default:
-        assert(!is_ws_delimiter(cp));
+    // Check if the character is a whitespace character.
+    char *c = strchr(CHARS, *cp);
+    if (c == NULL) {
         return false;
     }
+
+    // At this point, the character must be a whitespace character.
+    assert(is_ws_delimiter(cp));
+
+    // Get the index of the character within `CHARS` so that we can index into
+    // `STRINGS` to get the corresponding string.
+    size_t idx = c - CHARS;
+    char const *str = STRINGS[idx];
+
+    struct sh_token token;
+    token.type = SH_TOKEN_WHITESPACE;
+    token.text = str;
 
     *token_out = token;
     return true;

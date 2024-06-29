@@ -36,7 +36,7 @@ struct sh_spawn_desc {
     struct sh_redirection_desc *redirections;
 
     size_t argc;
-    char **argv;
+    char const *const *argv;
 
     struct sh_pipe_desc pipe_desc;
 };
@@ -159,7 +159,7 @@ void run_cmd(
     struct sh_pipe_desc pipe_desc
 ) {
     size_t argc = cmd->simple_cmd.argc;
-    char **argv = cmd->simple_cmd.argv;
+    char const *const *argv = cmd->simple_cmd.argv;
     assert(argc != 0);
 
     // Create a description for spawning the command.
@@ -350,7 +350,9 @@ pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
         }
 
         // Handle non-builtins.
-        execvp(desc.argv[0], desc.argv);
+        // The cast is safe:
+        // http://pubs.opengroup.org/onlinepubs/9699919799/functions/exec.html
+        execvp(desc.argv[0], (char *const *) desc.argv);
 
         // This point is only reached if `execvp` failed.
         // There is no point keeping the child process around, so we just print

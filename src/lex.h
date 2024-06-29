@@ -38,7 +38,7 @@ enum sh_token_type {
  */
 struct sh_token {
     enum sh_token_type type;
-    char *text;
+    char const *text;
 };
 
 /** Keeps track of context information required by a raw (lossless) lex. */

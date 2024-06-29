@@ -7,8 +7,8 @@
 
 /** Represents a simple shell command. */
 struct sh_ast_simple_cmd {
-    size_t argc; /**< Number of arguments. */
-    char **argv; /**< Argument strings */
+    size_t argc;       /**< Number of arguments. */
+    char const **argv; /**< Argument strings */
 };
 
 /** Represents which standard stream to redirect. */
@@ -24,7 +24,7 @@ struct sh_redirection_desc {
     enum sh_redirect_type type;
 
     /** The file path to redirect to. */
-    char *file;
+    char const *file;
 };
 
 /** Represents a shell command with redirection. */
@@ -72,7 +72,7 @@ struct sh_ast_cmd_line {
     union {
         /** A string representing the start or index of the command to search
          * for and repeat. */
-        char *repeat;
+        char const *repeat;
 
         struct {
             size_t job_count; /**< Number of jobs in the command line. */

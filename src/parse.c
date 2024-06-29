@@ -389,7 +389,7 @@ parse_cmd(struct sh_parse_context *ctx, struct sh_ast_cmd *out) {
             return SH_PARSE_COMMAND_FAIL;
         }
 
-        char *redirect_file = ctx->tokens[ctx->token_idx].text;
+        char const *redirect_file = ctx->tokens[ctx->token_idx].text;
         ctx->token_idx++;
 
         // Double the size of the redirections array when there is not enough
@@ -449,7 +449,7 @@ parse_simple_cmd(struct sh_parse_context *ctx, struct sh_ast_simple_cmd *out) {
     // Now, allocate memory for the arguments.
     size_t argc = end_idx - ctx->token_idx;
     // + 1 for the terminating null pointer.
-    char **argv = malloc(sizeof(char *) * (argc + 1));
+    char const **argv = malloc(sizeof(char *) * (argc + 1));
     if (argv == NULL) {
         return SH_PARSE_MEMORY_ERROR;
     }

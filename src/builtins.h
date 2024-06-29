@@ -29,7 +29,7 @@ struct sh_builtin_std_fds {
  * @param name the name of the command
  * @return `true if the command is a built-in, otherwise `false`
  */
-bool is_builtin(char *name);
+bool is_builtin(char const *name);
 
 /**
  * Runs a built-in command.
@@ -49,7 +49,7 @@ int run_builtin(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 );
 
 /** Represents the possible results for the `exit` built-in command. */
@@ -75,7 +75,7 @@ enum sh_exit_result run_exit(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 );
 
 /** Represents the possible results for the `history` built-in command. */
@@ -99,7 +99,7 @@ enum sh_history_result run_history(
     struct sh_shell_context const *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 );
 
 /** Represents the possible results for the `prompt` built-in command. */
@@ -124,7 +124,7 @@ enum sh_prompt_result run_prompt(
     struct sh_shell_context *ctx,
     struct sh_builtin_std_fds fds,
     size_t argc,
-    char *argv[]
+    char const *const *argv
 );
 
 /** Represents the possible results for the `pwd` built-in command. */
@@ -146,7 +146,7 @@ enum sh_pwd_result {
  * @return the result of the pwd command
  */
 enum sh_pwd_result
-run_pwd(struct sh_builtin_std_fds fds, size_t argc, char *argv[]);
+run_pwd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv);
 
 /** Represents the possible results for the `cd` built-in command. */
 enum sh_cd_result {
@@ -166,6 +166,6 @@ enum sh_cd_result {
  * @return the result of the cd command
  */
 enum sh_cd_result
-run_cd(struct sh_builtin_std_fds fds, size_t argc, char *argv[]);
+run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv);
 
 #endif /* BUILTINS_H */
