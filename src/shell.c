@@ -5,8 +5,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include "lex.h"
-#include "parse.h"
 #include "run.h"
 #include "shell.h"
 
@@ -56,42 +54,11 @@ int main() {
 
         add_to_history(&sh_ctx, line);
 
-        struct sh_lex_context lex_ctx;
-        init_lex_context(&lex_ctx, line);
-
-        enum sh_lex_result lex_result;
-        do {
-            lex_result = lex(&lex_ctx);
-        } while (lex_result == SH_LEX_ONGOING);
-
-        if (lex_result == SH_LEX_MEMORY_ERROR) {
-            fprintf(stderr, "error: memory failure\n");
-        } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
-            fprintf(stderr, "error: unterminated quote\n");
-        } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
-            fprintf(stderr, "error: glob error\n");
-        } else {
-            struct sh_ast_root ast;
-            enum sh_parse_result parse_result = parse(
-                lex_ctx.tokbuf,
-                lex_ctx.tokbuf_len,
-                &ast
-            );
-
-            if (parse_result != SH_PARSE_SUCCESS) {
-                printf("error: failed to parse command line\n");
-            } else {
-                struct sh_run_result result = run(&sh_ctx, &ast);
-                if (sh_ctx.should_exit) {
-                    should_exit = true;
-                    exit_code = sh_ctx.exit_code;
-                }
-
-                destroy_ast(&ast);
-            }
+        struct sh_run_result run_result = run(&sh_ctx, line);
+        if (sh_ctx.should_exit) {
+            should_exit = true;
+            exit_code = sh_ctx.exit_code;
         }
-
-        destroy_lex_context(&lex_ctx);
 
         // We don't free the line since it is kept in the history.
     }

@@ -41,6 +41,12 @@ struct sh_spawn_desc {
     struct sh_pipe_desc pipe_desc;
 };
 
+void run_ast(
+    struct sh_shell_context *ctx,
+    struct sh_run_result *result,
+    struct sh_ast_root const *root
+);
+
 void run_cmd_line(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
@@ -65,16 +71,54 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
 
 pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
 
-struct sh_run_result
-run(struct sh_shell_context *ctx, struct sh_ast_root const *root) {
+struct sh_run_result run(struct sh_shell_context *ctx, char *line) {
+    // TODO: don't print error messages here — propagate errors to the caller.
+
     struct sh_run_result result = (struct sh_run_result) {
         .error_count = 0,
         .errors = NULL,
     };
 
-    run_cmd_line(ctx, &result, &root->cmd_line);
+    struct sh_lex_context lex_ctx;
+    init_lex_context(&lex_ctx, line);
+
+    enum sh_lex_result lex_result;
+    do {
+        lex_result = lex(&lex_ctx);
+    } while (lex_result == SH_LEX_ONGOING);
+
+    if (lex_result == SH_LEX_MEMORY_ERROR) {
+        fprintf(stderr, "error: memory failure\n");
+    } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
+        fprintf(stderr, "error: unterminated quote\n");
+    } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
+        fprintf(stderr, "error: glob error\n");
+    } else {
+        struct sh_ast_root ast;
+        enum sh_parse_result parse_result = parse(
+            lex_ctx.tokbuf,
+            lex_ctx.tokbuf_len,
+            &ast
+        );
+
+        if (parse_result != SH_PARSE_SUCCESS) {
+            printf("error: failed to parse command line\n");
+        } else {
+            run_ast(ctx, &result, &ast);
+            destroy_ast(&ast);
+        }
+    }
+    destroy_lex_context(&lex_ctx);
 
     return result;
+}
+
+void run_ast(
+    struct sh_shell_context *ctx,
+    struct sh_run_result *result,
+    struct sh_ast_root const *root
+) {
+    run_cmd_line(ctx, result, &root->cmd_line);
 }
 
 void run_cmd_line(
