@@ -51,6 +51,20 @@ append_to_catbuf(struct sh_lex_context *ctx, char const *text, size_t text_len);
 enum sh_append_result
 append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token);
 
+/**
+ * Checks if the given raw token type indicates the start of an unquoted section
+ * of a word.
+ *
+ * A raw token type indicates as such if it is one of the following:
+ * `SH_RAW_TOKEN_TEXT`, `SH_RAW_TOKEN_BACKSLASH`, `SH_RAW_TOKEN_ASTERISK`,
+ * `SH_RAW_TOKEN_QUESTION` or `SH_RAW_TOKEN_SQUARE_BRACKET_L`.
+ *
+ * @param raw_tok_type the raw token type to check
+ * @return `true` if the raw token type indicates the start of an unquoted
+ * section of a word and `false` otherwise
+ */
+bool is_unquoted_section_marker(enum sh_raw_token_type raw_tok_type);
+
 /** Represents the result of ending a word token. */
 enum sh_end_word_result {
     SH_END_WORD_SUCCESS,
@@ -143,11 +157,12 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
     } else if (old_state == SH_LEX_STATE_WORD_QUOTED) {
         // No state transition — the only way to leave the quoted state is to
         // see the end quote.
-    } else if (raw_token.type == SH_RAW_TOKEN_TEXT || raw_token.type == SH_RAW_TOKEN_BACKSLASH || raw_token.type == SH_RAW_TOKEN_ASTERISK || raw_token.type == SH_RAW_TOKEN_QUESTION || raw_token.type == SH_RAW_TOKEN_SQUARE_BRACKET_L)
-    {
+    } else if (is_unquoted_section_marker(raw_token.type)) {
+        // Start of an unquoted section of a word.
         ctx->state = SH_LEX_STATE_WORD_UNQUOTED;
     } else if (raw_token.type == SH_RAW_TOKEN_DOUBLE_QUOTE || raw_token.type == SH_RAW_TOKEN_SINGLE_QUOTE)
     {
+        // Start of a quoted section of a word.
         ctx->state = SH_LEX_STATE_WORD_QUOTED;
         ctx->start_quote = raw_token;
 
@@ -155,6 +170,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
         result = SH_LEX_ONGOING;
         goto ret;
     } else {
+        // Everything else would just be the dull state.
         ctx->state = SH_LEX_STATE_DULL;
     }
 
@@ -176,6 +192,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
         }
     }
 
+    // Perform the actions for the current state.
     switch (ctx->state) {
     case SH_LEX_STATE_DULL: {
         // Check if the token is a whitespace token. Whitespace tokens are
@@ -205,15 +222,17 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
         // Handle escaped characters.
         if (ctx->escape) {
             // Special case for `2>`. We need to escape the `2` and add it to
-            // the word, but create a separate sepcial for token `>`.
+            // the word, but create a separate special for token `>`.
             if (ctx->state == SH_LEX_STATE_WORD_UNQUOTED
                 && raw_token.type == SH_TOKEN_2_ANGLE_BRACKET_R)
             {
+                // Append the escaped "2".
                 if (append_to_catbuf(ctx, "2", 1) != SH_APPEND_SUCCESS) {
                     result = SH_LEX_MEMORY_ERROR;
                     goto ret;
                 }
 
+                // We need to end the current word since `>` is a special token.
                 enum sh_end_word_result end_word_result = end_word(ctx);
                 switch (end_word_result) {
                 case SH_END_WORD_MEMORY_ERROR:
@@ -226,6 +245,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
                     break;
                 }
 
+                // Create and append the `>` token.
                 struct sh_token angle_r_tok = (struct sh_token) {
                     .type = SH_TOKEN_ANGLE_BRACKET_R,
                     .text = ">",
@@ -458,4 +478,12 @@ enum sh_end_word_result end_word(struct sh_lex_context *ctx) {
     ctx->catbuf = NULL;
 
     return SH_END_WORD_SUCCESS;
+}
+
+bool is_unquoted_section_marker(enum sh_raw_token_type raw_tok_type) {
+    return raw_tok_type == SH_RAW_TOKEN_TEXT
+           || raw_tok_type == SH_RAW_TOKEN_BACKSLASH
+           || raw_tok_type == SH_RAW_TOKEN_ASTERISK
+           || raw_tok_type == SH_RAW_TOKEN_QUESTION
+           || raw_tok_type == SH_RAW_TOKEN_SQUARE_BRACKET_L;
 }
