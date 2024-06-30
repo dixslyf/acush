@@ -5,263 +5,243 @@
 #include <string.h>
 
 #include "lex.h"
-
-#define WHITESPACE_DELIMITERS " \n\t\f\r\v"
-
-/**
- * Attempts to lex the given character pointer into a special token.
- * `0` is returned and a token corresponding to `*cp` is written to `token_out`
- * if `cp` indeed represents a special token. Otherwise, `-1` is returned.
- *
- * See `is_special()` for what counts as a special token.
- *
- * @param cp the character pointer to try lexing into a special token
- * @param token_out a pointer to write the output token to
- *
- * @return `true` if `cp` was successfully parsed into a special token;
- * otherwise, `false`
- */
-bool lex_special(char const *cp, struct sh_token *token_out);
-
-bool lex_whitespace(char const *cp, struct sh_token *token_out);
+#include "raw_lex.h"
 
 /**
- * Returns `true` if `*cp` is a whitespace delimiter. Otherwise, returns
- * `false`.
+ * Returns the corresponding token type from the given raw token type.
  *
- * Whitespace delimiters are those in `WHITESPACE_DELIMITERS`.
+ * If there is no corresponding token type, an assertion failure will be raised!
  *
- * @param cp the character pointer to check
- * @return `true` if `*cp` is a whitespace delimiter; otherwise, `false`
+ * @param raw_token_type the raw token type to get the corresponding token type
+ * for
+ * @return the corresonding token type
  */
-bool is_ws_delimiter(char const *cp);
+enum sh_token_type
+token_type_from_raw_token_type(enum sh_raw_token_type raw_token_type);
+
+/** Represents the result of appending to a dynamically allocated buffer. */
+enum sh_append_result {
+    SH_APPEND_SUCCESS,
+    SH_APPEND_MEMORY_ERROR,
+};
 
 /**
- * Returns `true` if `cp` represents a special token.
+ * Appends the given text content to the concatenation buffer of the given
+ * context.
  *
- * A special token is any of the following: & ; | < > 2 ! ' " * ? [ \.
+ * @param ctx the lex context whose concatenation buffer is to be appended to
+ * @param text the text content to append to the concatenation buffer
+ * @param the length of the text content (exclusive of the null character)
  *
- * @param cp the character pointer to check
- * @return `true` if `*cp` represents a special token; otherwise, `false`
+ * @return `SH_APPEND_SUCCESS` if successful or `SH_APPEND_MEMORY_ERROR` if
+ * memory allocation failed
  */
-bool is_special(char const *cp);
+enum sh_append_result
+append_to_catbuf(struct sh_lex_context *ctx, char const *text, size_t text_len);
 
 /**
- * Returns `true` if `cp` is a text boundary. Otherwise, returns `false`.
+ * Appends the given token to the token buffer of the given context.
  *
- * `cp` is a text boundary if any of the following evaluate to `true`:
- *   - `is_ws_delimiter(cp)`
- *   - `is_special(cp)`
- *   - `*cp == '\0'`
+ * @param ctx the lex context whose token buffer is to be appended to
+ * @param text the token to append to the token buffer
  *
- * @param cp the character pointer to check
- * @return `true` if `cp` represents a text boundary; otherwise, `false`
+ * @return `SH_APPEND_SUCCESS` if successful or `SH_APPEND_MEMORY_ERROR` if
+ * memory allocation failed
  */
-bool is_text_boundary(char const *cp);
+enum sh_append_result
+append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token);
+
+/** Represents the result of ending a word token. */
+enum sh_end_word_result {
+    SH_END_WORD_SUCCESS,
+    SH_END_WORD_MEMORY_ERROR,
+    SH_END_WORD_GLOB_ABORTED,
+};
 
 /**
- * Returns `true` if `cp` is not a text boundary. Otherwise, returns `false`.
+ * Ends the current word token for the given context.
  *
- * See `is_text_boundary()`.
+ * This function should only be called after the completion of lexing a word
+ * token!
  *
- * @param cp the character pointer to check
- * @return `true` if `cp` is not a text boundary; otherwise, `false`
+ * This function attempts to expand the current contents of the concatenation
+ * buffer by treating the contents as a glob pattern. If the expansion is
+ * successful, all resulting paths are converted into word tokens and added to
+ * the token buffer of the context. If the expansion yields no matching results,
+ * then the concatenation buffer is converted to a word token after removing the
+ * escaping backslashes (since those backslashes are for escaping metacharacters
+ * before passing to `glob()`).
+ *
+ * @param ctx the lex context
+ * @return the result of attempting to end the word
  */
-bool is_text_char(char const *cp);
+enum sh_end_word_result end_word(struct sh_lex_context *ctx);
 
-int append_to_catbuf(
-    struct sh_lex_context *ctx,
-    char const *text,
-    size_t text_len
-);
-
-int append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token);
-int finish_word(struct sh_lex_context *ctx);
-
-void init_raw_lex_context(
-    char const *input,
-    struct sh_raw_lex_context *ctx_out
-) {
-    ctx_out->cp = input;
-    ctx_out->finished = false;
-}
-
-void init_lex_context(struct sh_lex_context *ctx_out) {
+void init_lex_context(struct sh_lex_context *ctx_out, char const *input) {
+    // Initialise the context.
     *ctx_out = (struct sh_lex_context) {
-        .state = SH_LEX_REFINE_DULL,
+        .tokbuf_capacity = 0,
+        .tokbuf_len = 0,
+        .tokbuf = NULL,
+
+        .state = SH_LEX_STATE_DULL,
         .escape = false,
 
         .catbuf_capacity = 0,
         .catbuf_len = 0,
         .catbuf = NULL,
-
-        .tokbuf_capacity = 0,
-        .tokbuf_len = 0,
-        .tokbuf = NULL,
-    };
-}
-
-enum sh_lex_result
-raw_lex(struct sh_raw_lex_context *ctx, struct sh_token *token_out) {
-    if (ctx->finished) {
-        return SH_LEX_END;
-    }
-
-    // If the current character is the null character, we still need to send the
-    // terminating end token.
-    if (*ctx->cp == '\0') {
-        *token_out = (struct sh_token) {
-            .type = SH_TOKEN_END,
-            .text = "\0",
-        };
-
-        ctx->finished = true;
-
-        return SH_LEX_ONGOING;
-    }
-
-    // Try lexing a special or whitespace token.
-    struct sh_token token;
-    if (lex_special(ctx->cp, &token) || lex_whitespace(ctx->cp, &token)) {
-        // Increment the pointer.
-        if (token.type == SH_TOKEN_2_ANGLE_BRACKET_R) {
-            // Special case for `2>` since it has two characters.
-            ctx->cp += 2;
-        } else {
-            ctx->cp++;
-        }
-
-        *token_out = token;
-        return SH_LEX_ONGOING;
-    }
-
-    // At this point, the token is a text token.
-
-    // Keep track of the start of the token.
-    char const *text_start = ctx->cp;
-
-    // Find the end of the token.
-    do {
-        ctx->cp++;
-    } while (is_text_char(ctx->cp));
-
-    // Allocate memory for the token's text.
-    size_t text_len = ctx->cp - text_start;
-    char *text = malloc(
-        sizeof(char) * text_len + 1
-    ); // `+ 1` for terminating null character.
-    if (text == NULL) {
-        return SH_LEX_MEMORY_ERROR;
-    }
-
-    // Copy the corresponding substring into the allocated buffer.
-    strncpy(text, text_start, text_len);
-    text[text_len] = '\0';
-
-    // No need to increment `ctx->cp` since it should already be
-    // pointing to the next unseen character.
-
-    *token_out = (struct sh_token) {
-        .type = SH_TOKEN_TEXT,
-        .text = text,
     };
 
-    return SH_LEX_ONGOING;
+    // Initialise the raw lex context.
+    init_raw_lex_context(&ctx_out->raw_ctx, input);
 }
 
-enum sh_lex_result
-lex(struct sh_lex_context *ctx, struct sh_token const *token_in) {
+enum sh_lex_result lex(struct sh_lex_context *ctx) {
+    // Keep track of the return value.
+    enum sh_lex_result result = SH_LEX_ONGOING;
+
+    // Get the next raw token.
+    struct sh_raw_token raw_token;
+    enum sh_raw_lex_result raw_lex_result = raw_lex(&ctx->raw_ctx, &raw_token);
+
+    // Decide whether to continue based on the results of the raw lex.
+    switch (raw_lex_result) {
+    case SH_RAW_LEX_END:
+        result = SH_LEX_END;
+        goto ret;
+    case SH_RAW_LEX_MEMORY_ERROR:
+        result = SH_LEX_MEMORY_ERROR;
+        goto ret;
+    case SH_RAW_LEX_GLOB_ERROR:
+        result = SH_LEX_GLOB_ERROR;
+        goto ret;
+    case SH_RAW_LEX_ONGOING:
+        break;
+    }
+
+    assert(raw_lex_result == SH_RAW_LEX_ONGOING);
+
     // Determine which state to change to.
     enum sh_lex_state old_state = ctx->state;
     if (ctx->escape) {
         // Don't do any state transitions if we're escaping the current token.
         assert(
-            old_state == SH_LEX_REFINE_WORD_QUOTED
-            || old_state == SH_LEX_REFINE_WORD_UNQUOTED
+            old_state == SH_LEX_STATE_WORD_QUOTED
+            || old_state == SH_LEX_STATE_WORD_UNQUOTED
         );
-    } else if (old_state == SH_LEX_REFINE_WORD_QUOTED
-        && token_in->type == ctx->start_quote.type)
+    } else if (old_state == SH_LEX_STATE_WORD_QUOTED
+        && raw_token.type == ctx->start_quote.type)
     {
-        ctx->state = SH_LEX_REFINE_WORD_QUOTED_END;
-    } else if (old_state == SH_LEX_REFINE_WORD_QUOTED && token_in->type == SH_TOKEN_END)
+        // Reached the closing quote for a quoted string.
+        ctx->state = SH_LEX_STATE_WORD_QUOTED_END;
+    } else if (old_state == SH_LEX_STATE_WORD_QUOTED && raw_token.type == SH_TOKEN_END)
     {
-        return SH_LEX_UNTERMINATED_QUOTE;
-    } else if (old_state == SH_LEX_REFINE_WORD_QUOTED) {
+        // Reached the end of the token sequence even though we haven't
+        // terminated the current quoted string.
+        result = SH_LEX_UNTERMINATED_QUOTE;
+        goto ret;
+    } else if (old_state == SH_LEX_STATE_WORD_QUOTED) {
         // No state transition — the only way to leave the quoted state is to
         // see the end quote.
-    } else if (token_in->type == SH_TOKEN_TEXT || token_in->type == SH_TOKEN_BACKSLASH || token_in->type == SH_TOKEN_ASTERISK || token_in->type == SH_TOKEN_QUESTION || token_in->type == SH_TOKEN_SQUARE_BRACKET_L)
+    } else if (raw_token.type == SH_RAW_TOKEN_TEXT || raw_token.type == SH_RAW_TOKEN_BACKSLASH || raw_token.type == SH_RAW_TOKEN_ASTERISK || raw_token.type == SH_RAW_TOKEN_QUESTION || raw_token.type == SH_RAW_TOKEN_SQUARE_BRACKET_L)
     {
-        ctx->state = SH_LEX_REFINE_WORD_UNQUOTED;
-    } else if (token_in->type == SH_TOKEN_DOUBLE_QUOTE || token_in->type == SH_TOKEN_SINGLE_QUOTE)
+        ctx->state = SH_LEX_STATE_WORD_UNQUOTED;
+    } else if (raw_token.type == SH_RAW_TOKEN_DOUBLE_QUOTE || raw_token.type == SH_RAW_TOKEN_SINGLE_QUOTE)
     {
-        ctx->state = SH_LEX_REFINE_WORD_QUOTED;
-        ctx->start_quote = *token_in;
+        ctx->state = SH_LEX_STATE_WORD_QUOTED;
+        ctx->start_quote = raw_token;
 
         // We don't actually need to do anything with the opening quote.
-        return SH_LEX_ONGOING;
+        result = SH_LEX_ONGOING;
+        goto ret;
     } else {
-        ctx->state = SH_LEX_REFINE_DULL;
+        ctx->state = SH_LEX_STATE_DULL;
     }
 
     // If we exited a word, then write the token.
-    if ((old_state == SH_LEX_REFINE_WORD_QUOTED_END
-         || old_state == SH_LEX_REFINE_WORD_UNQUOTED)
-        && (ctx->state == SH_LEX_REFINE_DULL || token_in->type == SH_TOKEN_END))
+    if ((old_state == SH_LEX_STATE_WORD_QUOTED_END
+         || old_state == SH_LEX_STATE_WORD_UNQUOTED)
+        && (ctx->state == SH_LEX_STATE_DULL || raw_token.type == SH_TOKEN_END))
     {
-        finish_word(ctx);
+        enum sh_end_word_result end_word_result = end_word(ctx);
+        switch (end_word_result) {
+        case SH_END_WORD_MEMORY_ERROR:
+            result = SH_LEX_MEMORY_ERROR;
+            goto ret;
+        case SH_END_WORD_GLOB_ABORTED:
+            result = SH_LEX_GLOB_ERROR;
+            goto ret;
+        case SH_END_WORD_SUCCESS:
+            break;
+        }
     }
 
     switch (ctx->state) {
-    case SH_LEX_REFINE_DULL: {
+    case SH_LEX_STATE_DULL: {
         // Check if the token is a whitespace token. Whitespace tokens are
         // thrown away for the dull state.
-        if (token_in->type == SH_TOKEN_WHITESPACE) {
+        if (raw_token.type == SH_RAW_TOKEN_WHITESPACE) {
             break;
         }
 
         // At this point, the token must be one of the other special characters.
 
         struct sh_token token = (struct sh_token) {
-            .type = token_in->type,
-            .text = token_in->text, // This is guaranteed to be statically
+            .type = token_type_from_raw_token_type(raw_token.type),
+            .text = raw_token.text, // This is guaranteed to be statically
                                     // allocated, so no copying is necessary.
         };
 
-        if (append_to_tokbuf(ctx, token) < 0) {
-            return SH_LEX_MEMORY_ERROR;
+        if (append_to_tokbuf(ctx, token) != SH_APPEND_SUCCESS) {
+            result = SH_LEX_MEMORY_ERROR;
+            goto ret;
         }
 
         break;
     }
 
-    case SH_LEX_REFINE_WORD_QUOTED:
-    case SH_LEX_REFINE_WORD_UNQUOTED: {
+    case SH_LEX_STATE_WORD_QUOTED:
+    case SH_LEX_STATE_WORD_UNQUOTED: {
         // Handle escaped characters.
         if (ctx->escape) {
             // Special case for `2>`. We need to escape the `2` and add it to
             // the word, but create a separate sepcial for token `>`.
-            if (ctx->state == SH_LEX_REFINE_WORD_UNQUOTED
-                && token_in->type == SH_TOKEN_2_ANGLE_BRACKET_R)
+            if (ctx->state == SH_LEX_STATE_WORD_UNQUOTED
+                && raw_token.type == SH_TOKEN_2_ANGLE_BRACKET_R)
             {
-                if (append_to_catbuf(ctx, "2", 1) < 0) {
-                    return SH_LEX_MEMORY_ERROR;
+                if (append_to_catbuf(ctx, "2", 1) != SH_APPEND_SUCCESS) {
+                    result = SH_LEX_MEMORY_ERROR;
+                    goto ret;
                 }
-                finish_word(ctx);
+
+                enum sh_end_word_result end_word_result = end_word(ctx);
+                switch (end_word_result) {
+                case SH_END_WORD_MEMORY_ERROR:
+                    result = SH_LEX_MEMORY_ERROR;
+                    goto ret;
+                case SH_END_WORD_GLOB_ABORTED:
+                    result = SH_LEX_GLOB_ERROR;
+                    goto ret;
+                case SH_END_WORD_SUCCESS:
+                    break;
+                }
 
                 struct sh_token angle_r_tok = (struct sh_token) {
                     .type = SH_TOKEN_ANGLE_BRACKET_R,
                     .text = ">",
                 };
 
-                if (append_to_tokbuf(ctx, angle_r_tok) < 0) {
-                    return SH_LEX_MEMORY_ERROR;
+                if (append_to_tokbuf(ctx, angle_r_tok) != SH_APPEND_SUCCESS) {
+                    result = SH_LEX_MEMORY_ERROR;
+                    goto ret;
                 }
 
                 // This is the only time we'll change the state from here.
-                ctx->state = SH_LEX_REFINE_DULL;
-            } else if (append_to_catbuf(ctx, token_in->text, strlen(token_in->text)) < 0)
+                ctx->state = SH_LEX_STATE_DULL;
+            } else if (append_to_catbuf(ctx, raw_token.text, strlen(raw_token.text)) != SH_APPEND_SUCCESS)
             {
-                return SH_LEX_MEMORY_ERROR;
+                result = SH_LEX_MEMORY_ERROR;
+                goto ret;
             }
 
             ctx->escape = false;
@@ -269,12 +249,13 @@ lex(struct sh_lex_context *ctx, struct sh_token const *token_in) {
         }
 
         // If the token is a backslash, then we need to escape the next token.
-        if (token_in->type == SH_TOKEN_BACKSLASH) {
+        if (raw_token.type == SH_RAW_TOKEN_BACKSLASH) {
             // Backslash followed by any character will make that character be
             // taken literally, so we can just add a backslash unconditionally.
             // Keep in mind that we are building a string to pass to `glob()`.
-            if (append_to_catbuf(ctx, "\\", 1) < 0) {
-                return SH_LEX_MEMORY_ERROR;
+            if (append_to_catbuf(ctx, "\\", 1) != SH_APPEND_SUCCESS) {
+                result = SH_LEX_MEMORY_ERROR;
+                goto ret;
             }
             ctx->escape = true;
             break;
@@ -283,28 +264,36 @@ lex(struct sh_lex_context *ctx, struct sh_token const *token_in) {
         // Otherwise, we need to add the token's text.
         // However, if we're inside a quote, characters special to `glob()` need
         // to be escaped.
-        if (ctx->state == SH_LEX_REFINE_WORD_QUOTED
-            && (token_in->type == SH_TOKEN_ASTERISK
-                || token_in->type == SH_TOKEN_QUESTION
-                || token_in->type == SH_TOKEN_SQUARE_BRACKET_L)
-            && append_to_catbuf(ctx, "\\", 1) < 0)
+        if (ctx->state == SH_LEX_STATE_WORD_QUOTED
+            && (raw_token.type == SH_RAW_TOKEN_ASTERISK
+                || raw_token.type == SH_RAW_TOKEN_QUESTION
+                || raw_token.type == SH_RAW_TOKEN_SQUARE_BRACKET_L)
+            && append_to_catbuf(ctx, "\\", 1) != SH_APPEND_SUCCESS)
         {
-            return SH_LEX_MEMORY_ERROR;
+            result = SH_LEX_MEMORY_ERROR;
+            goto ret;
         }
 
         // Finally, add the text of the current token.
-        if (append_to_catbuf(ctx, token_in->text, strlen(token_in->text))) {
-            return SH_LEX_MEMORY_ERROR;
+        if (append_to_catbuf(ctx, raw_token.text, strlen(raw_token.text))
+            != SH_APPEND_SUCCESS)
+        {
+            result = SH_LEX_MEMORY_ERROR;
+            goto ret;
         }
 
         break;
     }
 
-    case SH_LEX_REFINE_WORD_QUOTED_END:
+    case SH_LEX_STATE_WORD_QUOTED_END:
         break;
     }
 
-    return SH_LEX_ONGOING;
+ret:
+    if (result != SH_LEX_END) {
+        destroy_raw_token(&raw_token);
+    }
+    return result;
 }
 
 void destroy_lex_context(struct sh_lex_context *ctx) {
@@ -317,9 +306,9 @@ void destroy_lex_context(struct sh_lex_context *ctx) {
 }
 
 void destroy_token(struct sh_token *token) {
-    // Only the `text` for `SH_TOKEN_TEXT` and `SH_TOKEN_WORD` are dynamically
-    // allocated. Other token types use static allocation.
-    if (token->type == SH_TOKEN_TEXT || token->type == SH_TOKEN_WORD) {
+    // Only the `text` `SH_TOKEN_WORD` is dynamically allocated. Other token
+    // types use static allocation.
+    if (token->type == SH_TOKEN_WORD) {
         // NOTE: This is a safe cast since we are no longer using it. Strangely,
         // `free()` takes in a non-const pointer. Linus Torvalds (creator of
         // Linux) seems to agree that `free()` shouldn't take in a non-const
@@ -329,97 +318,31 @@ void destroy_token(struct sh_token *token) {
     }
 }
 
-bool lex_special(char const *cp, struct sh_token *token_out) {
-    static char const CHARS[] = "&;!|<>'\"*?[\\";
-    static enum sh_token_type const TOKEN_TYPES[] = {
-        SH_TOKEN_AMP,
-        SH_TOKEN_SEMICOLON,
-        SH_TOKEN_EXCLAM,
-        SH_TOKEN_PIPE,
-        SH_TOKEN_ANGLE_BRACKET_L,
-        SH_TOKEN_ANGLE_BRACKET_R,
-        SH_TOKEN_SINGLE_QUOTE,
-        SH_TOKEN_DOUBLE_QUOTE,
-        SH_TOKEN_ASTERISK,
-        SH_TOKEN_QUESTION,
-        SH_TOKEN_SQUARE_BRACKET_L,
-        SH_TOKEN_BACKSLASH,
-    };
-    static char const *const STRINGS[] =
-        {"&", ";", "!", "|", "<", ">", "'", "\"", "*", "?", "[", "\\"};
-
-    struct sh_token token;
-
-    // Special case for `2>` since it consists of multiple characters.
-    if (*cp == '2' && *(cp + 1) == '>') {
-        token.type = SH_TOKEN_2_ANGLE_BRACKET_R;
-        token.text = "2>";
-        *token_out = token;
-        return true;
+enum sh_token_type
+token_type_from_raw_token_type(enum sh_raw_token_type raw_token_type) {
+    switch (raw_token_type) {
+    case SH_RAW_TOKEN_AMP:
+        return SH_TOKEN_AMP;
+    case SH_RAW_TOKEN_SEMICOLON:
+        return SH_TOKEN_SEMICOLON;
+    case SH_RAW_TOKEN_EXCLAM:
+        return SH_TOKEN_EXCLAM;
+    case SH_RAW_TOKEN_PIPE:
+        return SH_TOKEN_PIPE;
+    case SH_RAW_TOKEN_ANGLE_BRACKET_L:
+        return SH_TOKEN_ANGLE_BRACKET_L;
+    case SH_RAW_TOKEN_ANGLE_BRACKET_R:
+        return SH_TOKEN_ANGLE_BRACKET_R;
+    case SH_RAW_TOKEN_2_ANGLE_BRACKET_R:
+        return SH_TOKEN_2_ANGLE_BRACKET_R;
+    case SH_RAW_TOKEN_END:
+        return SH_TOKEN_END;
+    default:
+        assert(false);
     }
-
-    // Check if the character is a special character.
-    char *c = strchr(CHARS, *cp);
-    if (c == NULL) {
-        return false;
-    }
-
-    // At this point, the character must be a special character.
-    assert(is_special(cp));
-
-    // Get the index of the character within `CHARS` so that we can index into
-    // `STRINGS` to get the corresponding string.
-    size_t idx = c - CHARS;
-    token.type = TOKEN_TYPES[idx];
-    char const *str = STRINGS[idx];
-    token.text = str;
-
-    *token_out = token;
-    return true;
 }
 
-bool lex_whitespace(char const *cp, struct sh_token *token_out) {
-    // For mapping each whitespace character to a string.
-    static char const CHARS[] = " \n\t\f\r\v";
-    static char const *STRINGS[] = {" ", "\n", "\t", "\f", "\r", "\v"};
-
-    // Check if the character is a whitespace character.
-    char *c = strchr(CHARS, *cp);
-    if (c == NULL) {
-        return false;
-    }
-
-    // At this point, the character must be a whitespace character.
-    assert(is_ws_delimiter(cp));
-
-    // Get the index of the character within `CHARS` so that we can index into
-    // `STRINGS` to get the corresponding string.
-    size_t idx = c - CHARS;
-    char const *str = STRINGS[idx];
-
-    struct sh_token token;
-    token.type = SH_TOKEN_WHITESPACE;
-    token.text = str;
-
-    *token_out = token;
-    return true;
-}
-
-bool is_ws_delimiter(char const *cp) {
-    return strchr(WHITESPACE_DELIMITERS, *cp);
-}
-
-bool is_quote(char const *cp) { return *cp == '"' || *cp == '\''; }
-
-bool is_special(char const *cp) { return strchr("&;|<>2!'\"*?[\\", *cp); }
-
-bool is_text_boundary(char const *cp) {
-    return is_ws_delimiter(cp) || is_special(cp) || *cp == '\0';
-}
-
-bool is_text_char(char const *cp) { return !is_text_boundary(cp); }
-
-int append_to_catbuf(
+enum sh_append_result append_to_catbuf(
     struct sh_lex_context *ctx,
     char const *text,
     size_t text_len
@@ -430,7 +353,7 @@ int append_to_catbuf(
         size_t new_capacity = ctx->catbuf_capacity + text_len * 2 + 1;
         char *tmp = realloc(ctx->catbuf, sizeof(char) * new_capacity);
         if (tmp == NULL) {
-            return -1;
+            return SH_APPEND_MEMORY_ERROR;
         }
 
         ctx->catbuf_capacity = new_capacity;
@@ -441,10 +364,11 @@ int append_to_catbuf(
     strncpy(ctx->catbuf + ctx->catbuf_len, text, text_len);
     ctx->catbuf_len += text_len;
     ctx->catbuf[ctx->catbuf_len] = '\0';
-    return 0;
+    return SH_APPEND_SUCCESS;
 }
 
-int append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token) {
+enum sh_append_result
+append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token) {
     // Grow the buffer if needed.
     // `+ 1` for null character.
     if (ctx->tokbuf_len + 1 > ctx->tokbuf_capacity) {
@@ -458,7 +382,7 @@ int append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token) {
         );
 
         if (tmp == NULL) {
-            return -1;
+            return SH_APPEND_MEMORY_ERROR;
         }
 
         ctx->tokbuf_capacity = new_capacity;
@@ -469,10 +393,10 @@ int append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token) {
     ctx->tokbuf[ctx->tokbuf_len] = token;
     ctx->tokbuf_len++;
 
-    return 0;
+    return SH_APPEND_SUCCESS;
 }
 
-int finish_word(struct sh_lex_context *ctx) {
+enum sh_end_word_result end_word(struct sh_lex_context *ctx) {
     struct sh_token token = (struct sh_token) {
         .type = SH_TOKEN_WORD,
         .text = ctx->catbuf,
@@ -483,11 +407,11 @@ int finish_word(struct sh_lex_context *ctx) {
     int glob_ret = glob(ctx->catbuf, 0, NULL, &pg);
 
     if (glob_ret == GLOB_NOSPACE) {
-        return -1;
+        return SH_END_WORD_MEMORY_ERROR;
     }
 
     if (glob_ret == GLOB_ABORTED) {
-        return -2;
+        return SH_END_WORD_GLOB_ABORTED;
     }
 
     // If there is no match, we follow bash's behaviour and treat the word
@@ -505,14 +429,14 @@ int finish_word(struct sh_lex_context *ctx) {
         }
         *pwrite = '\0';
 
-        if (append_to_tokbuf(ctx, token) < 0) {
-            return -1;
+        if (append_to_tokbuf(ctx, token) != SH_APPEND_SUCCESS) {
+            return SH_END_WORD_MEMORY_ERROR;
         }
 
         ctx->catbuf_capacity = 0;
         ctx->catbuf_len = 0;
         ctx->catbuf = NULL;
-        return 0;
+        return SH_END_WORD_SUCCESS;
     }
 
     // At this point, the `glob()` must have been successful.
@@ -523,8 +447,8 @@ int finish_word(struct sh_lex_context *ctx) {
             .text = pg.gl_pathv[idx],
         };
 
-        if (append_to_tokbuf(ctx, token) < 0) {
-            return -1;
+        if (append_to_tokbuf(ctx, token) != SH_APPEND_SUCCESS) {
+            return SH_END_WORD_MEMORY_ERROR;
         }
     }
 
@@ -533,5 +457,5 @@ int finish_word(struct sh_lex_context *ctx) {
     free(ctx->catbuf);
     ctx->catbuf = NULL;
 
-    return 0;
+    return SH_END_WORD_SUCCESS;
 }

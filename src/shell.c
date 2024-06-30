@@ -56,34 +56,20 @@ int main() {
 
         add_to_history(&sh_ctx, line);
 
-        struct sh_raw_lex_context raw_lex_ctx;
-        init_raw_lex_context(line, &raw_lex_ctx);
-
         struct sh_lex_context lex_ctx;
-        init_lex_context(&lex_ctx);
+        init_lex_context(&lex_ctx, line);
 
-        struct sh_token raw_token;
-        enum sh_lex_result raw_lex_result;
         enum sh_lex_result lex_result;
-        while (true) {
-            raw_lex_result = raw_lex(&raw_lex_ctx, &raw_token);
-            if (raw_lex_result != SH_LEX_ONGOING) {
-                break;
-            }
+        do {
+            lex_result = lex(&lex_ctx);
+        } while (lex_result == SH_LEX_ONGOING);
 
-            lex_result = lex(&lex_ctx, &raw_token);
-            destroy_token(&raw_token);
-            if (lex_result != SH_LEX_ONGOING && lex_result != SH_LEX_ONGOING) {
-                break;
-            }
-        }
-
-        if (raw_lex_result == SH_LEX_MEMORY_ERROR
-            || lex_result == SH_LEX_MEMORY_ERROR)
-        {
-            printf("error: memory failure\n");
+        if (lex_result == SH_LEX_MEMORY_ERROR) {
+            fprintf(stderr, "error: memory failure\n");
         } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
-            printf("error: unterminated quote\n");
+            fprintf(stderr, "error: unterminated quote\n");
+        } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
+            fprintf(stderr, "error: glob error\n");
         } else {
             struct sh_ast_root ast;
             enum sh_parse_result parse_result = parse(
