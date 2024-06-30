@@ -318,11 +318,18 @@ ret:
 
 void destroy_lex_context(struct sh_lex_context *ctx) {
     free(ctx->catbuf);
+    ctx->catbuf = NULL;
+    ctx->catbuf_len = 0;
+    ctx->catbuf_capacity = 0;
 
     for (size_t idx = 0; idx < ctx->tokbuf_len; idx++) {
         destroy_token(&ctx->tokbuf[idx]);
     }
+
     free(ctx->tokbuf);
+    ctx->tokbuf = NULL;
+    ctx->tokbuf_len = 0;
+    ctx->tokbuf_capacity = 0;
 }
 
 void destroy_token(struct sh_token *token) {
@@ -417,21 +424,21 @@ append_to_tokbuf(struct sh_lex_context *ctx, struct sh_token token) {
 }
 
 enum sh_end_word_result end_word(struct sh_lex_context *ctx) {
-    struct sh_token token = (struct sh_token) {
-        .type = SH_TOKEN_WORD,
-        .text = ctx->catbuf,
-    };
+    // Keep track of the result.
+    enum sh_end_word_result result = SH_END_WORD_SUCCESS;
 
     // Expand globs.
     glob_t pg;
     int glob_ret = glob(ctx->catbuf, 0, NULL, &pg);
 
     if (glob_ret == GLOB_NOSPACE) {
-        return SH_END_WORD_MEMORY_ERROR;
+        result = SH_END_WORD_MEMORY_ERROR;
+        goto ret;
     }
 
     if (glob_ret == GLOB_ABORTED) {
-        return SH_END_WORD_GLOB_ABORTED;
+        result = SH_END_WORD_GLOB_ABORTED;
+        goto ret;
     }
 
     // If there is no match, we follow bash's behaviour and treat the word
@@ -449,35 +456,62 @@ enum sh_end_word_result end_word(struct sh_lex_context *ctx) {
         }
         *pwrite = '\0';
 
+        // Create and append the token.
+        struct sh_token token = (struct sh_token) {
+            .type = SH_TOKEN_WORD,
+            .text = ctx->catbuf,
+        };
+
         if (append_to_tokbuf(ctx, token) != SH_APPEND_SUCCESS) {
-            return SH_END_WORD_MEMORY_ERROR;
+            result = SH_END_WORD_MEMORY_ERROR;
+            goto ret;
         }
 
+        // Don't free `catbuf` because `token.text` points to it!
         ctx->catbuf_capacity = 0;
         ctx->catbuf_len = 0;
         ctx->catbuf = NULL;
-        return SH_END_WORD_SUCCESS;
+
+        result = SH_END_WORD_SUCCESS;
+        goto ret;
     }
 
     // At this point, the `glob()` must have been successful.
     assert(glob_ret == 0);
     for (size_t idx = 0; idx < pg.gl_pathc; idx++) {
+        // We don't want to use the pointers from `pg.gl_pathv` directly because
+        // `pg` needs to be cleaned up with `globfree()`, so we copy each glob
+        // result.
+        size_t text_len = strlen(pg.gl_pathv[idx]);
+        char *text = malloc(sizeof(char) * (text_len + 1));
+        if (text == NULL) {
+            result = SH_END_WORD_MEMORY_ERROR;
+            goto ret;
+        }
+
+        // Copy the characters into `text`.
+        strncpy(text, pg.gl_pathv[idx], text_len);
+        text[text_len] = '\0';
+
+        // Create and append the token.
         struct sh_token token = (struct sh_token) {
             .type = SH_TOKEN_WORD,
-            .text = pg.gl_pathv[idx],
+            .text = text,
         };
 
         if (append_to_tokbuf(ctx, token) != SH_APPEND_SUCCESS) {
-            return SH_END_WORD_MEMORY_ERROR;
+            result = SH_END_WORD_MEMORY_ERROR;
+            goto ret;
         }
     }
 
-    ctx->catbuf_capacity = 0;
+ret:
+    // No need to free `catbuf` since it can be reused.
+    // Let `destroy_lex_context()` handle the freeing.
     ctx->catbuf_len = 0;
-    free(ctx->catbuf);
-    ctx->catbuf = NULL;
 
-    return SH_END_WORD_SUCCESS;
+    globfree(&pg);
+    return result;
 }
 
 bool is_unquoted_section_marker(enum sh_raw_token_type raw_tok_type) {
