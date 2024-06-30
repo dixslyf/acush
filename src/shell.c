@@ -153,6 +153,7 @@ void destroy_shell_context(struct sh_shell_context *ctx) {
 }
 
 void setup_signals() {
+    // Set up SIGCHLD handler.
     struct sigaction sigact_chld;
     sigemptyset(&sigact_chld.sa_mask);
     // Prevent `getline()` from getting interrupted.
@@ -160,6 +161,18 @@ void setup_signals() {
     sigact_chld.sa_flags = SA_RESTART;
     sigact_chld.sa_handler = handle_sigchld;
     sigaction(SIGCHLD, &sigact_chld, NULL);
+
+    // Ignore SIGINT (Ctrl+C), SIGQUIT (Ctrl+\) and SIGTSTP (Ctrl+Z).
+    static size_t const SIGNALS_IGNORE_SIZE = 3;
+    static int const SIGNALS_IGNORE[] = {SIGINT, SIGQUIT, SIGTSTP};
+    struct sigaction sigact_ign;
+    sigemptyset(&sigact_ign.sa_mask);
+    sigact_ign.sa_flags = 0;
+    sigact_ign.sa_handler = SIG_IGN;
+    for (size_t idx = 0; idx < SIGNALS_IGNORE_SIZE; idx++) {
+        int sig = SIGNALS_IGNORE[idx];
+        sigaction(sig, &sigact_ign, NULL);
+    }
 }
 
 void handle_sigchld(int signo) { waitpid(-1, NULL, WNOHANG); }
