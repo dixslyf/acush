@@ -7,6 +7,6 @@ for test_exe in "$@"; do
     echo "PASS $(basename "$test_exe")"
   else
     echo "FAIL $(basename "$test_exe") (exit code: $exit_code)"
+    echo "$test_output"
   fi
-  echo "$test_output"
 done
