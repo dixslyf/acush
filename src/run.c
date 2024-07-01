@@ -59,17 +59,22 @@ void run_job_desc(
     struct sh_job_desc const *job_desc
 );
 
-void run_cmd(
+pid_t run_cmd(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
+    pid_t pgid,
     enum sh_job_type job_type,
     struct sh_pipe_desc pipe_desc
 );
 
 int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
 
-pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
+pid_t spawn(
+    struct sh_shell_context *ctx,
+    pid_t pgid,
+    struct sh_spawn_desc desc
+);
 
 struct sh_run_result run(struct sh_shell_context *ctx, char *line) {
     // TODO: don't print error messages here — propagate errors to the caller.
@@ -150,15 +155,24 @@ void run_job_desc(
 
     // If there is only one command, no piping is required.
     if (job->cmd_count == 1) {
+        pid_t pgid = 0;
         struct sh_pipe_desc pipe_desc = (struct sh_pipe_desc) {
             .redirect_stdin = false,
             .redirect_stdout = false,
         };
-        run_cmd(ctx, result, &job->piped_cmds[0], job_desc->type, pipe_desc);
+        run_cmd(
+            ctx,
+            result,
+            &job->piped_cmds[0],
+            pgid,
+            job_desc->type,
+            pipe_desc
+        );
         return;
     }
 
     // Multiple commands, so piping is required.
+    pid_t pgid = 0;
     int pipe_fds[2];
     for (size_t idx = 0; idx < job->cmd_count; idx++) {
         struct sh_pipe_desc pipe_desc;
@@ -186,7 +200,19 @@ void run_job_desc(
         }
 
         // TODO: handle failure — need to close pipes
-        run_cmd(ctx, result, &job->piped_cmds[idx], job_desc->type, pipe_desc);
+        pid_t pid = run_cmd(
+            ctx,
+            result,
+            &job->piped_cmds[idx],
+            pgid,
+            job_desc->type,
+            pipe_desc
+        );
+
+        // Set the group ID to the PID of the first spawned command.
+        if (pid > 0 && pgid == 0) {
+            pgid = pid;
+        }
 
         // If `exit` was called, then we should stop any further processing.
         if (ctx->should_exit) {
@@ -195,10 +221,11 @@ void run_job_desc(
     }
 }
 
-void run_cmd(
+pid_t run_cmd(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
+    pid_t pgid,
     enum sh_job_type job_type,
     struct sh_pipe_desc pipe_desc
 ) {
@@ -220,12 +247,13 @@ void run_cmd(
     if (desc.job_type == SH_JOB_FG && is_builtin(argv[0])) {
         // TODO: error handling
         run_builtin_fg(ctx, desc);
-        return;
+        return 0;
     }
 
-    // Run non-builtins. Also run background builtins.
+    // Run non-builtins. Also run background built-ins.
     // TODO: write error to `result` on error
-    pid_t pid = spawn(ctx, desc);
+    pid_t pid = spawn(ctx, pgid, desc);
+    return pid;
 }
 
 int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
@@ -326,10 +354,20 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     return 0;
 }
 
-pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
+pid_t spawn(
+    struct sh_shell_context *ctx,
+    pid_t pgid,
+    struct sh_spawn_desc desc
+) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process.
+
+        // Set the group ID.
+        if (setpgid(0, pgid) < 0) {
+            // TODO: properly handle error
+            perror("setpgid");
+        }
 
         // Handle redirection of stdin for piping.
         if (desc.pipe_desc.redirect_stdin) {
