@@ -342,6 +342,16 @@ pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
             if (dup2(desc.pipe_desc.read_fd_left, STDIN_FILENO) < 0) {
                 // TODO: handle error
             }
+
+            // Once the redirection is done, we don't need the original file
+            // descriptor around, so we close it. Even if the redirection
+            // failed, we still don't need the original file descriptor anymore.
+            if (close(desc.pipe_desc.read_fd_left) < 0) {
+                // Once the redirection is done, we don't need the original file
+                // descriptor around, so we close it.
+
+                // TODO: handle error
+            }
         }
 
         // Handle redirection of stdout for piping.
@@ -353,6 +363,14 @@ pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
 
             // Redirect stdout to the write end.
             if (dup2(desc.pipe_desc.write_fd_right, STDOUT_FILENO) < 0) {
+                // TODO: handle error
+            }
+
+            // Once the redirection is done, we don't need the original file
+            // descriptor around, so we close it. Even if the redirection
+            // failed, we still don't need the original file descriptor anymore.
+            if (close(desc.pipe_desc.write_fd_right) < 0) {
+
                 // TODO: handle error
             }
         }
@@ -377,6 +395,7 @@ pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
 
             if (fd_to < 0) {
                 // TODO: handle error
+                continue;
             }
 
             int fd_from = redir.type == SH_REDIRECT_STDOUT
@@ -387,7 +406,13 @@ pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
 
             if (dup2(fd_to, fd_from) < 0) {
                 // TODO: handle error
-                close(fd_to);
+            }
+
+            // Once the redirection is done, we don't need the original file
+            // descriptor around, so we close it. Even if the redirection
+            // failed, we still don't need the original file descriptor anymore.
+            if (close(fd_to) < 0) {
+                // TODO: handle error
             }
         }
 
@@ -439,8 +464,6 @@ pid_t spawn(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
                 // TODO: handle error
             }
         }
-
-        // FIXME: close open files
 
         // Only wait if the job is a foreground job.
         // Background jobs are consumed by the signal handler for `SIGCHLD`
