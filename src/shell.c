@@ -80,6 +80,8 @@ init_shell_context(struct sh_shell_context *ctx) {
         .history_count = 0,
         .history = NULL,
         .prompt = prompt,
+        .should_exit = false,
+        .exit_code = EXIT_SUCCESS,
     };
 
     return SH_INIT_SHELL_CONTEXT_SUCCESS;

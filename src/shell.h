@@ -20,14 +20,10 @@ struct sh_shell_context {
 
     bool should_exit; /**< Indicates if the shell should exit. This is set by
                          the `exit` builtin. */
-    union {
-        /**
-         * Exit code for the shell if the shell should exit..
-         * This is set by the `exit` builtin and is only initialised if the
-         * shell should exit.
-         */
-        int exit_code;
-    };
+    int exit_code;    /**<
+                       * Exit code for the shell if the shell should exit..
+                       * This is set by the `exit` builtin.
+                       */
 };
 
 /** Represents the possible results of initializing the shell context. */
