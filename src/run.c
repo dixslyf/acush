@@ -284,33 +284,44 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
             // TODO: handle error
         }
 
+        int *fds_mem;
+        int std_fileno;
         switch (redir.type) {
         case SH_REDIRECT_STDOUT:
-            fds.stdout = fd_to;
+            fds_mem = &fds.stdout;
+            std_fileno = STDOUT_FILENO;
             break;
         case SH_REDIRECT_STDIN:
-            fds.stdin = fd_to;
+            fds_mem = &fds.stdin;
+            std_fileno = STDIN_FILENO;
             break;
         case SH_REDIRECT_STDERR:
-            fds.stderr = fd_to;
+            fds_mem = &fds.stderr;
+            std_fileno = STDERR_FILENO;
             break;
         }
+
+        // If we're overwriting a previous redirection, close it.
+        if (*fds_mem != std_fileno && close(*fds_mem) < 0) {
+            // TODO: handle error
+        }
+        *fds_mem = fd_to;
     }
 
     run_builtin(ctx, fds, desc.argc, desc.argv);
 
-    // Close pipes.
-    // Like `spawn()`, we only close the pipe after executing the consumer
-    // side, not after executing the consumer. Hence, we only close the pipe for
-    // `desc.pipe_desc.redirect_stdin`.
-    if (desc.pipe_desc.redirect_stdin) {
-        if (close(desc.pipe_desc.read_fd_left) < 0) {
-            // TODO: handle error
-        }
-        // No need to close the write end since we already closed it earlier.
+    // Close file descriptors if there were redirections.
+    if (fds.stdout != STDOUT_FILENO && close(fds.stdout) < 0) {
+        // TODO: handle error
     }
 
-    // FIXME: close open files
+    if (fds.stdin != STDIN_FILENO && close(fds.stdin) < 0) {
+        // TODO: handle error
+    }
+
+    if (fds.stderr != STDERR_FILENO && close(fds.stderr) < 0) {
+        // TODO: handle error
+    }
 
     return 0;
 }
