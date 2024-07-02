@@ -438,6 +438,25 @@ pid_t spawn(
     if (pid == 0) {
         // Child process.
 
+        // Since we set the signal handler and signal mask in the parent
+        // process, the child process will inherit them. We need to "undo" those
+        // changes.
+        //
+        // Reset the signal handler for SIGCHLD to the default.
+        struct sigaction sigact_chld;
+        sigemptyset(&sigact_chld.sa_mask);
+        sigact_chld.sa_flags = 0;
+        sigact_chld.sa_handler = SIG_DFL;
+        sigaction(SIGCHLD, &sigact_chld, NULL);
+
+        // Unblock SIGCHLD.
+        sigset_t sigchld_set;
+        sigemptyset(&sigchld_set);
+        int sigaddset_ret = sigaddset(&sigchld_set, SIGCHLD);
+        assert(sigaddset_ret == 0);
+        int sigprocmask_ret = sigprocmask(SIG_UNBLOCK, &sigchld_set, NULL);
+        assert(sigprocmask_ret == 0);
+
         // Handle redirection of stdin for piping.
         if (desc.pipe_desc.redirect_stdin) {
             // Close the write end.
