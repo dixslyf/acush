@@ -8,6 +8,9 @@
 #include "run.h"
 #include "shell.h"
 
+#define STOP_SIGNALS_SIZE 3
+static int const STOP_SIGNALS[STOP_SIGNALS_SIZE] = {SIGINT, SIGQUIT, SIGTSTP};
+
 /** Represents the possible results of initializing the shell context. */
 enum sh_init_shell_context_result {
     SH_INIT_SHELL_CONTEXT_SUCCESS,     /**< Successful initialization. */
@@ -183,16 +186,28 @@ void setup_signals() {
     sigact_chld.sa_handler = handle_sigchld;
     sigaction(SIGCHLD, &sigact_chld, NULL);
 
-    // Ignore SIGINT (Ctrl+C), SIGQUIT (Ctrl+\) and SIGTSTP (Ctrl+Z).
-    static size_t const SIGNALS_IGNORE_SIZE = 3;
-    static int const SIGNALS_IGNORE[] = {SIGINT, SIGQUIT, SIGTSTP};
+    ignore_stop_signals();
+}
+
+void ignore_stop_signals() {
     struct sigaction sigact_ign;
     sigemptyset(&sigact_ign.sa_mask);
     sigact_ign.sa_flags = 0;
     sigact_ign.sa_handler = SIG_IGN;
-    for (size_t idx = 0; idx < SIGNALS_IGNORE_SIZE; idx++) {
-        int sig = SIGNALS_IGNORE[idx];
+    for (size_t idx = 0; idx < STOP_SIGNALS_SIZE; idx++) {
+        int sig = STOP_SIGNALS[idx];
         sigaction(sig, &sigact_ign, NULL);
+    }
+}
+
+void reset_signal_handlers_for_stop_signals() {
+    struct sigaction sigact_dfl;
+    sigemptyset(&sigact_dfl.sa_mask);
+    sigact_dfl.sa_flags = 0;
+    sigact_dfl.sa_handler = SIG_DFL;
+    for (size_t idx = 0; idx < STOP_SIGNALS_SIZE; idx++) {
+        int sig = STOP_SIGNALS[idx];
+        sigaction(sig, &sigact_dfl, NULL);
     }
 }
 

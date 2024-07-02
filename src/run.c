@@ -268,12 +268,21 @@ void run_job_desc(
         }
     }
 
-    // Wait for all processes in the job to finish, but only wait if the job is
-    // a foreground job and there are actually processes that have been spawned.
-    // Background jobs are consumed by the signal handler for `SIGCHLD` so that
-    // they don't become zombie processes.
+    // When the job is a foreground job and processes were spawned, we want to
+    // set the job as the terminal foreground process group. We also want to
+    // wait for all processes in the job to finish.
+    //
+    // Background jobs are consumed by the signal handler for
+    // `SIGCHLD` so that they don't become zombie processes.
     if (job_desc->type == SH_JOB_FG && pids_len > 0) {
+        // Set the terminal foreground process group to the job's process group.
+        if (tcsetpgrp(STDIN_FILENO, pgid) < 0) {
+            perror("tcsetpgrp");
+        }
+
+        // Wait for the processes.
         size_t wait_successes = 0;
+        // TODO: what to do with `info`?
         siginfo_t info;
         while (wait_successes < pids_len) {
             pid_t wait_ret = waitid(P_PGID, pgid, &info, WEXITED | WSTOPPED);
@@ -289,10 +298,27 @@ void run_job_desc(
                 wait_successes++;
             }
         }
-        // TODO: what to do with `stat_loc`?
+
+        // Set the terminal foreground process group back to the shell process.
+        // However, we need to temporarily ignore `SIGTTOU` first because it
+        // will be sent when `tcsetpgrp()` is called from a background process,
+        // and our shell process is now a background process.
+        struct sigaction sigact_ign;
+        struct sigaction sigact_ttou_old;
+        sigemptyset(&sigact_ign.sa_mask);
+        sigact_ign.sa_flags = 0;
+        sigact_ign.sa_handler = SIG_IGN;
+        sigaction(SIGTTOU, &sigact_ign, &sigact_ttou_old);
+
+        if (tcsetpgrp(STDIN_FILENO, getpgid(0)) < 0) {
+            perror("tcsetpgrp");
+        }
+
+        // Restore the handler for SIGTTOU.
+        sigaction(SIGTTOU, &sigact_ttou_old, NULL);
     }
 
-    // Unblock the SIGCHLD since we're done with waiting.
+    // Unblock SIGCHLD since we're done with waiting.
     sigprocmask_ret = sigprocmask(SIG_UNBLOCK, &sigchld_set, NULL);
     assert(sigprocmask_ret == 0);
 }
@@ -456,6 +482,10 @@ pid_t spawn(
         assert(sigaddset_ret == 0);
         int sigprocmask_ret = sigprocmask(SIG_UNBLOCK, &sigchld_set, NULL);
         assert(sigprocmask_ret == 0);
+
+        // Similarly, we want to reset the signal handlers for SIGINT, SIGQUIT
+        // and SIGTSTP.
+        reset_signal_handlers_for_stop_signals();
 
         // Handle redirection of stdin for piping.
         if (desc.pipe_desc.redirect_stdin) {

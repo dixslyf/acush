@@ -26,4 +26,12 @@ struct sh_shell_context {
                        */
 };
 
+/** Sets up signal handlers for SIGINT (Ctrl+C), SIGQUIT (Ctrl+\) and SIGTSTP
+ * (Ctrl+Z) to ignore them. */
+void ignore_stop_signals();
+
+/** Resets the signal handlers for SIGINT (Ctrl+C), SIGQUIT (Ctrl+\) and SIGTSTP
+ * (Ctrl+Z) to their defaults. */
+void reset_signal_handlers_for_stop_signals();
+
 #endif /* SHELL_H */
