@@ -30,8 +30,6 @@ struct sh_pipe_desc {
 };
 
 struct sh_spawn_desc {
-    enum sh_job_type job_type;
-
     size_t redirection_count;
     struct sh_redirection_desc *redirections;
 
@@ -151,16 +149,31 @@ void run_job_desc(
     struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 ) {
+    // Since the SIGCHLD handler consumes child processes, we need to block
+    // SIGCHLD first so that we can properly wait for the child processes
+    // here.
+    sigset_t sigchld_set;
+    sigemptyset(&sigchld_set);
+    int sigaddset_ret = sigaddset(&sigchld_set, SIGCHLD);
+    assert(sigaddset_ret == 0);
+    int sigprocmask_ret = sigprocmask(SIG_BLOCK, &sigchld_set, NULL);
+    // Seems like the only way for `sigprocmask` (and `sigemptyset` and
+    // `sigaddset`) to fail is programmer error.
+    assert(sigprocmask_ret == 0);
+
     struct sh_ast_job const *job = &job_desc->job;
+    pid_t pids[job->cmd_count];
+    pid_t pids_len = 0;
+    pid_t pgid = 0;
 
     // If there is only one command, no piping is required.
     if (job->cmd_count == 1) {
-        pid_t pgid = 0;
         struct sh_pipe_desc pipe_desc = (struct sh_pipe_desc) {
             .redirect_stdin = false,
             .redirect_stdout = false,
         };
-        run_cmd(
+
+        pid_t pid = run_cmd(
             ctx,
             result,
             &job->piped_cmds[0],
@@ -168,57 +181,120 @@ void run_job_desc(
             job_desc->type,
             pipe_desc
         );
-        return;
-    }
 
-    // Multiple commands, so piping is required.
-    pid_t pgid = 0;
-    int pipe_fds[2];
-    for (size_t idx = 0; idx < job->cmd_count; idx++) {
-        struct sh_pipe_desc pipe_desc;
+        // The command was spawned successfully and is not a foreground builtin.
+        if (pid > 0) {
+            // Keep track of the PID.
+            pids[0] = pid;
+            pids_len++;
 
-        // Redirect stdin, but not for the first job.
-        pipe_desc.redirect_stdin = idx != 0;
-        if (pipe_desc.redirect_stdin) {
-            pipe_desc.read_fd_left = pipe_fds[0];
-            pipe_desc.write_fd_left = pipe_fds[1];
-        }
-
-        // Redirect stdout, but not for the last job.
-        pipe_desc.redirect_stdout = idx < job->cmd_count - 1;
-        if (pipe_desc.redirect_stdout) {
-            // Create a new pipe, but not on the last iteration since there
-            // should only be `job->cmd_count - 1` pipes.
-            if (pipe(pipe_fds) < 0) {
-                // TODO: error handling
-            }
-
-            if (pipe_desc.redirect_stdout) {
-                pipe_desc.read_fd_right = pipe_fds[0];
-                pipe_desc.write_fd_right = pipe_fds[1];
-            }
-        }
-
-        // TODO: handle failure — need to close pipes
-        pid_t pid = run_cmd(
-            ctx,
-            result,
-            &job->piped_cmds[idx],
-            pgid,
-            job_desc->type,
-            pipe_desc
-        );
-
-        // Set the group ID to the PID of the first spawned command.
-        if (pid > 0 && pgid == 0) {
+            // Set the group ID to the PID.
             pgid = pid;
         }
+    } else {
+        // Multiple commands, so piping is required.
+        int pipes[job->cmd_count - 1][2];
+        size_t pipes_len = 0;
+        for (size_t idx = 0; idx < job->cmd_count; idx++) {
+            struct sh_pipe_desc pipe_desc;
 
-        // If `exit` was called, then we should stop any further processing.
-        if (ctx->should_exit) {
-            break;
+            // Redirect stdin, but not for the first job.
+            pipe_desc.redirect_stdin = idx != 0;
+            if (pipe_desc.redirect_stdin) {
+                pipe_desc.read_fd_left = pipes[idx - 1][0];
+                pipe_desc.write_fd_left = pipes[idx - 1][1];
+            }
+
+            // Redirect stdout, but not for the last job.
+            pipe_desc.redirect_stdout = idx < job->cmd_count - 1;
+            if (pipe_desc.redirect_stdout) {
+                // Create a new pipe, but not on the last iteration since there
+                // should only be `job->cmd_count - 1` pipes.
+                if (pipe(pipes[idx]) < 0) {
+                    // Probably not a good idea to continue on failure.
+                    break;
+                }
+
+                pipes_len++;
+
+                pipe_desc.read_fd_right = pipes[idx][0];
+                pipe_desc.write_fd_right = pipes[idx][1];
+            }
+
+            pid_t pid = run_cmd(
+                ctx,
+                result,
+                &job->piped_cmds[idx],
+                pgid,
+                job_desc->type,
+                pipe_desc
+            );
+
+            // If we failed to spawn the command, then it is probably not a good
+            // idea to continue.
+            if (pid < 0) {
+                break;
+            }
+
+            // Keep track of the PID, but only if the command was not a
+            // foreground builtin.
+            if (pid > 0) {
+                pids[pids_len] = pid;
+                pids_len++;
+
+                // Set the group ID to the PID of the first spawned command.
+                if (pgid == 0) {
+                    pgid = pid;
+                }
+            }
+
+            // If `exit` was called, then we should stop any further processing.
+            if (ctx->should_exit) {
+                break;
+            }
+        }
+
+        // If this is true, then that means one of the commands failed to spawn.
+        // This means the last pipe will not have been closed properly, so we
+        // need to close it.
+        if (pipes_len > 0 && pipes_len < job->cmd_count - 1) {
+            if (close(pipes[pipes_len - 1][0]) < 0) {
+                // TODO: handle error
+            }
+
+            if (close(pipes[pipes_len - 1][1]) < 0) {
+                // TODO: handle error
+            }
         }
     }
+
+    // Wait for all processes in the job to finish, but only wait if the job is
+    // a foreground job and there are actually processes that have been spawned.
+    // Background jobs are consumed by the signal handler for `SIGCHLD` so that
+    // they don't become zombie processes.
+    if (job_desc->type == SH_JOB_FG && pids_len > 0) {
+        size_t wait_successes = 0;
+        siginfo_t info;
+        while (wait_successes < pids_len) {
+            pid_t wait_ret = waitid(P_PGID, pgid, &info, WEXITED | WSTOPPED);
+            if (wait_ret < 0) {
+                assert(wait_ret < 0);
+                perror("waitid");
+
+                // To prevent getting into an infinite loop, we should break out
+                // of the loop. This does leave the possibility of zombie
+                // processes, but the SIGCHLD handler should clean them up.
+                break;
+            } else {
+                wait_successes++;
+            }
+        }
+        // TODO: what to do with `stat_loc`?
+    }
+
+    // Unblock the SIGCHLD since we're done with waiting.
+    sigprocmask_ret = sigprocmask(SIG_UNBLOCK, &sigchld_set, NULL);
+    assert(sigprocmask_ret == 0);
 }
 
 pid_t run_cmd(
@@ -235,7 +311,6 @@ pid_t run_cmd(
 
     // Create a description for spawning the command.
     struct sh_spawn_desc desc = {
-        .job_type = job_type,
         .redirection_count = cmd->redirection_count,
         .redirections = cmd->redirections,
         .argc = argc,
@@ -244,7 +319,7 @@ pid_t run_cmd(
     };
 
     // Handle running builtins in the foreground.
-    if (desc.job_type == SH_JOB_FG && is_builtin(argv[0])) {
+    if (job_type == SH_JOB_FG && is_builtin(argv[0])) {
         // TODO: error handling
         run_builtin_fg(ctx, desc);
         return 0;
@@ -363,12 +438,6 @@ pid_t spawn(
     if (pid == 0) {
         // Child process.
 
-        // Set the group ID.
-        if (setpgid(0, pgid) < 0) {
-            // TODO: properly handle error
-            perror("setpgid");
-        }
-
         // Handle redirection of stdin for piping.
         if (desc.pipe_desc.redirect_stdin) {
             // Close the write end.
@@ -408,7 +477,6 @@ pid_t spawn(
             // descriptor around, so we close it. Even if the redirection
             // failed, we still don't need the original file descriptor anymore.
             if (close(desc.pipe_desc.write_fd_right) < 0) {
-
                 // TODO: handle error
             }
         }
@@ -477,8 +545,16 @@ pid_t spawn(
         // an error message and exit from the child process.
         fprintf(stderr, "%s: command not found\n", desc.argv[0]);
         exit(EXIT_FAILURE);
-    } else if (pid > 0) {
+    }
+
+    if (pid > 0) {
         // Parent process.
+
+        // Set the group ID for the child process.
+        if (setpgid(pid, pgid) < 0) {
+            // TODO: properly handle error
+            perror("setpgid");
+        }
 
         // The parent process created the pipes for the child processes, but
         // does not actually use them, so we need to close the pipe file
@@ -501,15 +577,6 @@ pid_t spawn(
             if (close(desc.pipe_desc.write_fd_left) < 0) {
                 // TODO: handle error
             }
-        }
-
-        // Only wait if the job is a foreground job.
-        // Background jobs are consumed by the signal handler for `SIGCHLD`
-        // so that they don't become zombie processes.
-        if (desc.job_type == SH_JOB_FG) {
-            int stat_loc;
-            waitpid(pid, &stat_loc, 0);
-            // TODO: what to do with `stat_loc`?
         }
     }
 
