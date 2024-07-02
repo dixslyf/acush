@@ -144,4 +144,10 @@ void setup_signals() {
     }
 }
 
-void handle_sigchld(int signo) { waitpid(-1, NULL, WNOHANG); }
+void handle_sigchld(int signo) {
+    // Since signals don't have a queue, it is possible for multiple `SIGCHLD`
+    // signals to "combine". Hence, we need to use a loop to consume all current
+    // zombie processes.
+    while (waitpid(-1, NULL, WNOHANG) > 0)
+        ;
+}
