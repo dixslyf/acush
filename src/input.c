@@ -80,15 +80,17 @@ ssize_t read_input(
             continue;
         }
 
-        // Handle escape sequences for navigating between history lines.
-        if (c == 27 && ctx->history_count > 0) {
+        // Handle escape sequences.
+        if (c == 27) {
             char seq[3];
             seq[0] = getchar();
             seq[1] = getchar();
             seq[2] = '\0';
 
             // Up arrow.
-            if (seq[0] == '[' && seq[1] == 'A' && history_idx > 0) {
+            if (seq[0] == '[' && seq[1] == 'A' && ctx->history_count > 0
+                && history_idx > 0)
+            {
                 // Delete all characters on `stdout`.
                 for (size_t idx = 0; idx < buf_idx; idx++) {
                     printf("\b \b");
@@ -121,7 +123,7 @@ ssize_t read_input(
             }
 
             // Down arrow.
-            if (seq[0] == '[' && seq[1] == 'B'
+            if (seq[0] == '[' && seq[1] == 'B' && ctx->history_count > 0
                 && history_idx < ctx->history_count - 1)
             {
                 // Delete all characters on `stdout`.

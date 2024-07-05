@@ -85,7 +85,6 @@ int main() {
         // `line_len` contains the number of characters in the line (including
         // the null byte), not the capacity!
         ssize_t line_len = read_input(&sh_ctx, &line, &line_capacity);
-
         if (line_len < 0) {
             // Consume the rest of the input in `stdin`.
             char ch;
