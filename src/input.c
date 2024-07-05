@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <termios.h>
@@ -6,16 +7,28 @@
 
 #include "input.h"
 
-void enable_raw_mode(struct termios *orig_termios) {
-    struct termios raw;
-    tcgetattr(STDIN_FILENO, orig_termios);
-    raw = *orig_termios;
+bool enable_raw_mode(struct termios *orig_termios) {
+    if (tcgetattr(STDIN_FILENO, orig_termios) < 0) {
+        perror("tcgetattr");
+        return false;
+    }
+
+    struct termios raw = *orig_termios;
     raw.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0) {
+        perror("tcsetattr");
+        return false;
+    }
+
+    return true;
 }
 
-void restore_term_mode(struct termios *orig_termios) {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, orig_termios);
+bool restore_term_mode(struct termios const *orig_termios) {
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, orig_termios) < 0) {
+        perror("tcsetattr");
+        return false;
+    }
+    return true;
 }
 
 ssize_t read_input(
@@ -24,13 +37,15 @@ ssize_t read_input(
     size_t *out_capacity
 ) {
     struct termios orig_termios;
-    enable_raw_mode(&orig_termios);
+    if (!enable_raw_mode(&orig_termios)) {
+        return -1;
+    }
 
     size_t buf_capacity = 64;
     size_t buf_idx = 0; // Index into the buffer.
     char *buf = malloc(sizeof(char) * buf_capacity);
     if (buf == NULL) {
-        perror("read_input");
+        perror("malloc");
         return -1;
     }
 
@@ -42,8 +57,8 @@ ssize_t read_input(
             size_t new_buf_capacity = buf_capacity * 2;
             char *new_buffer = realloc(buf, sizeof(char) * new_buf_capacity);
             if (new_buffer == NULL) {
+                perror("realloc");
                 free(buf);
-                perror("read_input");
                 return -1;
             }
             buf = new_buffer;
@@ -89,8 +104,8 @@ ssize_t read_input(
                         sizeof(char) * new_buf_capacity
                     );
                     if (new_buffer == NULL) {
+                        perror("realloc");
                         free(buf);
-                        perror("read_input");
                         return -1;
                     }
                     buf = new_buffer;
@@ -124,8 +139,8 @@ ssize_t read_input(
                         sizeof(char) * new_buf_capacity
                     );
                     if (new_buffer == NULL) {
+                        perror("realloc");
                         free(buf);
-                        perror("read_input");
                         return -1;
                     }
                     buf = new_buffer;

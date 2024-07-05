@@ -12,9 +12,9 @@
 
 #include "shell.h"
 
-void enable_raw_mode(struct termios *orig_termios);
+bool enable_raw_mode(struct termios *orig_termios);
 
-void restore_term_mode(struct termios *orig_termios);
+bool restore_term_mode(struct termios const *orig_termios);
 
 ssize_t read_input(
     struct sh_shell_context const *ctx,
