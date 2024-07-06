@@ -7,6 +7,12 @@
 
 #include "input.h"
 
+#define CH_BACKSPACE 127
+#define CSI_START_INTRO_1 27
+#define CSI_START_INTRO_2 '['
+#define CSI_UP 'A'
+#define CSI_DOWN 'B'
+
 bool enable_raw_mode(struct termios *orig_termios) {
     if (tcgetattr(STDIN_FILENO, orig_termios) < 0) {
         perror("tcgetattr");
@@ -81,7 +87,7 @@ ssize_t read_input(
         }
 
         // Handle backspace.
-        if (c == 127) {
+        if (c == CH_BACKSPACE) {
             if (edit_buf_idx > 0) {
                 edit_buf_idx--;
 
@@ -95,17 +101,12 @@ ssize_t read_input(
             continue;
         }
 
-        // Handle escape sequences.
-        if (c == 27) {
-            char seq[3];
-            seq[0] = getchar();
-            seq[1] = getchar();
-            seq[2] = '\0';
+        // Handle CSI escape sequences.
+        if (c == CSI_START_INTRO_1 && (c = getchar()) == CSI_START_INTRO_2) {
+            char code = getchar();
 
             // Up arrow.
-            if (seq[0] == '[' && seq[1] == 'A' && ctx->history_count > 0
-                && history_idx > 0)
-            {
+            if (code == CSI_UP && ctx->history_count > 0 && history_idx > 0) {
                 // Delete all characters on `stdout`.
                 for (size_t idx = 0; idx < edit_buf_idx; idx++) {
                     printf("\b \b");
@@ -161,7 +162,7 @@ ssize_t read_input(
             }
 
             // Down arrow.
-            if (seq[0] == '[' && seq[1] == 'B' && ctx->history_count > 0
+            if (code == CSI_DOWN && ctx->history_count > 0
                 && history_idx < ctx->history_count)
             {
                 // Delete all characters on `stdout`.
