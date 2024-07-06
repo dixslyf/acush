@@ -72,7 +72,7 @@ struct sh_ast_cmd_line {
     union {
         /** A string representing the start substring or index of the command to
          * search for and repeat. E.g., a number like "1" or a string "ec". */
-        char const *repeat;
+        char const *repeat_query;
 
         struct {
             size_t job_count; /**< Number of jobs in the command line. */

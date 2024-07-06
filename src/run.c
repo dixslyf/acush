@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -44,13 +43,15 @@ struct sh_spawn_desc {
 void run_ast(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
-    struct sh_ast_root const *root
+    struct sh_ast_root const *root,
+    char const *line
 );
 
 void run_cmd_line(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
-    struct sh_ast_cmd_line const *cmd_line
+    struct sh_ast_cmd_line const *cmd_line,
+    char const *line
 );
 
 void run_job_desc(
@@ -76,35 +77,7 @@ pid_t spawn(
     struct sh_spawn_desc desc
 );
 
-struct sh_run_result run(struct sh_shell_context *ctx, char *line) {
-    // TODO: don't print error messages here — propagate errors to the caller.
-
-    // Preserve the original line for history.
-    char *original_line = strdup(line);
-
-    if (line[0] == '!') {
-        char *expanded_command = NULL;
-        if (isdigit(line[1])) {
-            size_t command_number = strtoul(&line[1], NULL, 10);
-            expanded_command = get_command_by_number(ctx, command_number);
-        } else {
-            // Skip the '!' character and pass the rest as prefix to fetch
-            // command.
-            expanded_command = get_command_by_prefix(ctx, &line[1]);
-        }
-        if (expanded_command == NULL) {
-            free(original_line);
-        }
-        printf("%s\n", expanded_command); // Echo the command.
-        line = strdup(expanded_command);
-    }
-
-    add_command_to_history(
-        ctx,
-        original_line
-    );                   // Add the original command to history
-    free(original_line); // Free the preserved line
-
+struct sh_run_result run(struct sh_shell_context *ctx, char const *line) {
     struct sh_run_result result = (struct sh_run_result) {
         .error_count = 0,
         .errors = NULL,
@@ -135,7 +108,7 @@ struct sh_run_result run(struct sh_shell_context *ctx, char *line) {
         if (parse_result != SH_PARSE_SUCCESS) {
             printf("error: failed to parse command line\n");
         } else {
-            run_ast(ctx, &result, &ast);
+            run_ast(ctx, &result, &ast, line);
             destroy_ast(&ast);
         }
     }
@@ -147,15 +120,17 @@ struct sh_run_result run(struct sh_shell_context *ctx, char *line) {
 void run_ast(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
-    struct sh_ast_root const *root
+    struct sh_ast_root const *root,
+    char const *line
 ) {
-    run_cmd_line(ctx, result, &root->cmd_line);
+    run_cmd_line(ctx, result, &root->cmd_line, line);
 }
 
 void run_cmd_line(
     struct sh_shell_context *ctx,
     struct sh_run_result *result,
-    struct sh_ast_cmd_line const *cmd_line
+    struct sh_ast_cmd_line const *cmd_line,
+    char const *line
 ) {
     // Empty line — nothing to run.
     if (cmd_line == NULL) {
@@ -163,9 +138,37 @@ void run_cmd_line(
     }
 
     if (cmd_line->type == SH_COMMAND_REPEAT) {
-        // TODO: repeat command from history
+        char *endptr;
+        size_t cmd_one_idx = strtoul(cmd_line->repeat_query, &endptr, 10);
+        size_t cmd_idx = cmd_one_idx - 1;
+
+        // If the query is a number, we use it as an index into the history.
+        // Otherwise, we perform a search to find the latest command whose
+        // prefix matches.
+        char *queried_line = *endptr == '\0'
+                                 ? get_command_by_index(ctx, cmd_idx)
+                                 : get_command_by_prefix(
+                                     ctx,
+                                     cmd_line->repeat_query
+                                 );
+
+        if (queried_line == NULL) {
+            fprintf(stderr, "error: no such command in history\n");
+            return;
+        }
+
+        // Echo the command.
+        // Follows Bash's behaviour.
+        printf("%s\n", queried_line);
+
+        // No need to add to history for the `!` command line. Follows Bash's
+        // behaviour.
+
+        run(ctx, queried_line);
         return;
     }
+
+    add_line_to_history(ctx, line);
 
     for (size_t idx = 0; idx < cmd_line->job_count; idx++) {
         run_job_desc(ctx, result, &cmd_line->job_descs[idx]);

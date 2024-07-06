@@ -18,6 +18,6 @@ struct sh_run_error {
     // TODO:
 };
 
-struct sh_run_result run(struct sh_shell_context *ctx, char *line);
+struct sh_run_result run(struct sh_shell_context *ctx, char const *line);
 
 #endif

@@ -172,7 +172,7 @@ parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *out) {
             return SH_PARSE_COMMAND_LINE_FAIL;
         }
         out->type = SH_COMMAND_REPEAT;
-        out->repeat = ctx->tokens[ctx->token_idx].text;
+        out->repeat_query = ctx->tokens[ctx->token_idx].text;
         ctx->token_idx++;
         return SH_PARSE_SUCCESS;
     }
@@ -522,7 +522,7 @@ void display_ast(FILE *stream, struct sh_ast_root *ast) {
 void display_cmd_line(FILE *stream, struct sh_ast_cmd_line *cmd_line) {
     fprintf(stream, "  COMMAND_LINE\n");
     if (cmd_line->type == SH_COMMAND_REPEAT) {
-        fprintf(stream, "    repeat: %s\n", cmd_line->repeat);
+        fprintf(stream, "    repeat: %s\n", cmd_line->repeat_query);
     } else { // SH_COMMAND_JOBS
         fprintf(stream, "    job count: %lu\n", cmd_line->job_count);
         for (size_t idx = 0; idx < cmd_line->job_count; idx++) {

@@ -28,25 +28,6 @@ enum sh_init_shell_context_result
 init_shell_context(struct sh_shell_context *ctx);
 
 /**
- * Represents the possible results for adding a line to the shell's
- * command history.
- */
-enum sh_add_to_history_result {
-    SH_ADD_TO_HISTORY_SUCCESS,     /**< Successful addition to history. */
-    SH_ADD_TO_HISTORY_MEMORY_ERROR /**< Memory allocation error. */
-};
-
-/**
- * Adds a line to the shell history.
- *
- * @param ctx a pointer to the shell context
- * @param line the command line to be added to history
- * @return the result of the addition to history
- */
-enum sh_add_to_history_result
-add_to_history(struct sh_shell_context *ctx, char *line);
-
-/**
  * Destroys the shell context by freeing allocated resources.
  *
  * @param ctx a pointer to the shell context
@@ -95,15 +76,13 @@ int main() {
             continue;
         }
 
-        add_to_history(&sh_ctx, line);
-
         struct sh_run_result run_result = run(&sh_ctx, line);
         if (sh_ctx.should_exit) {
             should_exit = true;
             exit_code = sh_ctx.exit_code;
         }
 
-        // We don't free the line since it is kept in the history.
+        free(line);
     }
 
     destroy_shell_context(&sh_ctx);
@@ -131,7 +110,12 @@ init_shell_context(struct sh_shell_context *ctx) {
 }
 
 enum sh_add_to_history_result
-add_to_history(struct sh_shell_context *ctx, char *line) {
+add_line_to_history(struct sh_shell_context *ctx, char const *line) {
+    char *line_copy = strdup(line);
+    if (line_copy == NULL) {
+        return SH_ADD_TO_HISTORY_MEMORY_ERROR;
+    }
+
     // Grow the history buffer if needed.
     if (ctx->history_count == ctx->history_capacity) {
         size_t new_capacity = ctx->history_capacity == 0
@@ -147,9 +131,35 @@ add_to_history(struct sh_shell_context *ctx, char *line) {
     }
 
     // Add the line.
-    ctx->history[ctx->history_count] = line;
+    ctx->history[ctx->history_count] = line_copy;
     ctx->history_count++;
     return SH_ADD_TO_HISTORY_SUCCESS;
+}
+
+char *get_command_by_index(struct sh_shell_context *ctx, size_t idx) {
+    if (idx >= ctx->history_count) {
+        return NULL;
+    }
+    return ctx->history[idx];
+}
+
+char *get_command_by_prefix(struct sh_shell_context *ctx, char const *prefix) {
+    if (ctx->history_count == 0) {
+        return NULL;
+    }
+
+    char *match = NULL;
+    size_t prefix_len = strlen(prefix);
+    for (size_t idx = ctx->history_count - 1; idx >= 0; idx--) {
+        size_t history_cmd_len = strlen(ctx->history[idx]);
+        if (prefix_len <= history_cmd_len
+            && strncmp(ctx->history[idx], prefix, prefix_len) == 0)
+        {
+            match = ctx->history[idx];
+            break;
+        }
+    }
+    return match;
 }
 
 void destroy_shell_context(struct sh_shell_context *ctx) {
@@ -205,46 +215,4 @@ void handle_sigchld(int signo) {
     // zombie processes.
     while (waitpid(-1, NULL, WNOHANG) > 0)
         ;
-}
-
-void init_shell_context_for_history(struct sh_shell_context *ctx) {
-    ctx->history_memory.count = 0;
-    for (size_t i = 0; i < MAX_HISTORY; i++) {
-        ctx->history_memory.commands[i] = NULL;
-    }
-}
-
-void add_command_to_history(struct sh_shell_context *ctx, char const *command) {
-    if (ctx->history_memory.count == MAX_HISTORY) {
-        free(ctx->history_memory.commands[0]);
-        for (size_t i = 1; i < MAX_HISTORY; i++) {
-            ctx->history_memory.commands[i - 1] = ctx->history_memory
-                                                      .commands[i];
-        }
-        ctx->history_memory.count--;
-    }
-    ctx->history_memory.commands[ctx->history_memory.count] = strdup(command);
-    ctx->history_memory.count++;
-}
-
-char *get_command_by_number(struct sh_shell_context *ctx, size_t number) {
-    if (number < 1 || number > ctx->history_memory.count) {
-        fprintf(stderr, "error: no such command in history\n");
-        return NULL;
-    }
-    return ctx->history_memory.commands[number - 1];
-}
-
-// Function to get the last command starting with a specified prefix
-char *get_command_by_prefix(struct sh_shell_context *ctx, char const *prefix) {
-    char *last_command = NULL;
-    for (size_t i = ctx->history_memory.count - 1; i >= 0; i--) {
-        if (strncmp(ctx->history_memory.commands[i], prefix, strlen(prefix))
-            == 0)
-        {
-            last_command = strdup(ctx->history_memory.commands[i]);
-            break;
-        }
-    }
-    return last_command;
 }
