@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include "input.h"
 #include "run.h"
 #include "shell.h"
 
@@ -80,19 +81,11 @@ int main() {
 
         // Read user input command.
         char *line = NULL;
-        size_t line_size = 0; // Will contain the size of the `line`
-                              // buffer, not the number of characters!
-        ssize_t line_len = getline(&line, &line_size, stdin);
-        // `line_len` contains the number of characters (including the
-        // delimiter), not the buffer size!
-
+        size_t line_capacity = 0;
+        // `line_len` contains the number of characters in the line (including
+        // the null byte), not the capacity!
+        ssize_t line_len = read_input(&sh_ctx, &line, &line_capacity);
         if (line_len < 0) {
-            // According to `getline`'s documentation,
-            // `line` must be freed even if `getline` fails.
-            free(line);
-
-            perror("getline");
-
             // Consume the rest of the input in `stdin`.
             char ch;
             do {
@@ -100,11 +93,6 @@ int main() {
             } while (ch != '\n' && ch != EOF);
 
             continue;
-        }
-
-        // Strip trailing newline.
-        if (line[line_len - 1] == '\n') {
-            line[line_len - 1] = '\0';
         }
 
         add_to_history(&sh_ctx, line);

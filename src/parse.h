@@ -70,8 +70,8 @@ struct sh_ast_cmd_line {
      * type is `SH_COMMAND_REPEAT`. The struct member (containing `job_count`
      * and `job_descs`) is set when the type is `SH_COMMAND_JOBS`. */
     union {
-        /** A string representing the start or index of the command to search
-         * for and repeat. */
+        /** A string representing the start substring or index of the command to
+         * search for and repeat. E.g., a number like "1" or a string "ec". */
         char const *repeat;
 
         struct {
