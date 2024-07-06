@@ -172,8 +172,8 @@ parse_cmd_line(struct sh_parse_context *ctx, struct sh_ast_cmd_line *out) {
             return SH_PARSE_COMMAND_LINE_FAIL;
         }
         out->type = SH_COMMAND_REPEAT;
-        out->repeat = ctx->tokens[ctx->token_idx + 1].text;
-        ctx->token_idx += 2;
+        out->repeat = ctx->tokens[ctx->token_idx].text;
+        ctx->token_idx++;
         return SH_PARSE_SUCCESS;
     }
 
