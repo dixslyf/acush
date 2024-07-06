@@ -41,34 +41,49 @@ ssize_t read_input(
         return -1;
     }
 
-    size_t buf_capacity = 64;
-    size_t buf_idx = 0; // Index into the buffer.
-    char *buf = malloc(sizeof(char) * buf_capacity);
-    if (buf == NULL) {
+    // Buffer containing the text to edit and display.
+    size_t edit_buf_capacity = 64;
+    size_t edit_buf_idx = 0; // Index into the buffer.
+    char *edit_buf = malloc(sizeof(char) * edit_buf_capacity);
+    if (edit_buf == NULL) {
         perror("malloc");
         return -1;
     }
 
+    // Buffer to save the new command line.
+    // We need to keep track of this so that users can use the down arrow key to
+    // go back to what they were entering before they had used the up arrow key
+    // to navigate to a previous command line in the history.
+    size_t new_cmdline_capacity = 0;
+    size_t new_cmdline_idx = 0;
+    char *new_cmdline = NULL;
+
+    // Points to an entry in the history. However, if `history_idx` is equal to
+    // `ctx->history_count`, then we take it as the new commandline.
     size_t history_idx = ctx->history_count;
+
     char c;
     while ((c = getchar()) != '\n') {
-        // Grow the buffer if needed.
-        if (buf_idx >= buf_capacity) {
-            size_t new_buf_capacity = buf_capacity * 2;
-            char *new_buffer = realloc(buf, sizeof(char) * new_buf_capacity);
+        // Grow the edit buffer if needed.
+        if (edit_buf_idx >= edit_buf_capacity) {
+            size_t new_buf_capacity = edit_buf_capacity * 2;
+            char *new_buffer = realloc(
+                edit_buf,
+                sizeof(char) * new_buf_capacity
+            );
             if (new_buffer == NULL) {
                 perror("realloc");
-                free(buf);
+                free(edit_buf);
                 return -1;
             }
-            buf = new_buffer;
-            buf_capacity = new_buf_capacity;
+            edit_buf = new_buffer;
+            edit_buf_capacity = new_buf_capacity;
         }
 
         // Handle backspace.
         if (c == 127) {
-            if (buf_idx > 0) {
-                buf_idx--;
+            if (edit_buf_idx > 0) {
+                edit_buf_idx--;
 
                 // "\b" moves the cursor back by one and does not actually erase
                 // any characters. Hence, we use " " to overwrite the character
@@ -92,69 +107,93 @@ ssize_t read_input(
                 && history_idx > 0)
             {
                 // Delete all characters on `stdout`.
-                for (size_t idx = 0; idx < buf_idx; idx++) {
+                for (size_t idx = 0; idx < edit_buf_idx; idx++) {
                     printf("\b \b");
+                }
+
+                // If we're moving away from the new commandline, then we need
+                // to save it.
+                if (history_idx == ctx->history_count) {
+                    if (new_cmdline_capacity < edit_buf_idx + 1) {
+                        size_t new_buf_capacity = (edit_buf_idx + 1) * 2;
+                        char *new_buffer = realloc(
+                            new_cmdline,
+                            sizeof(char) * new_buf_capacity
+                        );
+                        if (new_buffer == NULL) {
+                            perror("realloc");
+                            free(new_cmdline);
+                            return -1;
+                        }
+                        new_cmdline = new_buffer;
+                        new_cmdline_capacity = new_buf_capacity;
+                    }
+                    strncpy(new_cmdline, edit_buf, edit_buf_idx);
+                    new_cmdline_idx = edit_buf_idx;
+                    new_cmdline[new_cmdline_idx] = '\0';
                 }
 
                 // Copy the previous line into the buffer.
                 history_idx--;
                 size_t len = strlen(ctx->history[history_idx]);
-                if (buf_capacity < len + 1) {
+                if (edit_buf_capacity < len + 1) {
                     size_t new_buf_capacity = (len + 1) * 2;
                     char *new_buffer = realloc(
-                        buf,
+                        edit_buf,
                         sizeof(char) * new_buf_capacity
                     );
                     if (new_buffer == NULL) {
                         perror("realloc");
-                        free(buf);
+                        free(edit_buf);
                         return -1;
                     }
-                    buf = new_buffer;
-                    buf_capacity = new_buf_capacity;
+                    edit_buf = new_buffer;
+                    edit_buf_capacity = new_buf_capacity;
                 }
 
-                strncpy(buf, ctx->history[history_idx], len);
-                buf_idx = len;
-                buf[buf_idx] = '\0';
+                strncpy(edit_buf, ctx->history[history_idx], len);
+                edit_buf_idx = len;
+                edit_buf[edit_buf_idx] = '\0';
 
                 // Replace the output on `stdout` with the previous line.
-                printf("%s", buf);
+                printf("%s", edit_buf);
+                continue;
             }
 
             // Down arrow.
             if (seq[0] == '[' && seq[1] == 'B' && ctx->history_count > 0
-                && history_idx < ctx->history_count - 1)
+                && history_idx < ctx->history_count)
             {
                 // Delete all characters on `stdout`.
-                for (size_t idx = 0; idx < buf_idx; idx++) {
+                for (size_t idx = 0; idx < edit_buf_idx; idx++) {
                     printf("\b \b");
                 }
 
                 // Copy the next line into the buffer.
                 history_idx++;
-                size_t len = strlen(ctx->history[history_idx]);
-                if (buf_capacity < len + 1) {
-                    size_t new_buf_capacity = (len + 1) * 2;
-                    char *new_buffer = realloc(
-                        buf,
-                        sizeof(char) * new_buf_capacity
-                    );
-                    if (new_buffer == NULL) {
-                        perror("realloc");
-                        free(buf);
-                        return -1;
-                    }
-                    buf = new_buffer;
-                    buf_capacity = new_buf_capacity;
+                size_t len;
+                char *history_line;
+                if (history_idx == ctx->history_count) {
+                    len = new_cmdline_idx;
+                    history_line = new_cmdline;
+                } else {
+                    len = strlen(ctx->history[history_idx]);
+                    history_line = ctx->history[history_idx];
                 }
 
-                strncpy(buf, ctx->history[history_idx], len);
-                buf_idx = len;
-                buf[buf_idx] = '\0';
+                // The only way to move back down is to have moved up before.
+                // When we move up, we may grow the buffer. However, the buffer
+                // will never shrink, so, when moving down, the buffer is
+                // guaranteed to have enough space.
+                assert(edit_buf_capacity >= len + 1);
+
+                strncpy(edit_buf, history_line, len);
+                edit_buf_idx = len;
+                edit_buf[edit_buf_idx] = '\0';
 
                 // Replace the output on `stdout` with the next line.
-                printf("%s", buf);
+                printf("%s", edit_buf);
+                continue;
             }
 
             continue;
@@ -163,8 +202,8 @@ ssize_t read_input(
         // Handle other characters.
 
         // Save the character to the buffer.
-        buf[buf_idx] = c;
-        buf_idx++;
+        edit_buf[edit_buf_idx] = c;
+        edit_buf_idx++;
 
         // Write the character to `stdout`.
         putchar(c);
@@ -172,13 +211,13 @@ ssize_t read_input(
 
     // We only reach this point if the user enters a newline.
     assert(c == '\n');
-    buf[buf_idx] = '\0';
+    edit_buf[edit_buf_idx] = '\0';
     printf("\n");
 
     restore_term_mode(&orig_termios);
 
-    *out_capacity = buf_capacity;
-    *out = buf;
+    *out_capacity = edit_buf_capacity;
+    *out = edit_buf;
 
-    return buf_idx;
+    return edit_buf_idx;
 }
