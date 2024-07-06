@@ -206,3 +206,45 @@ void handle_sigchld(int signo) {
     while (waitpid(-1, NULL, WNOHANG) > 0)
         ;
 }
+
+void init_shell_context_for_history(struct sh_shell_context *ctx) {
+    ctx->history_memory.count = 0;
+    for (size_t i = 0; i < MAX_HISTORY; i++) {
+        ctx->history_memory.commands[i] = NULL;
+    }
+}
+
+void add_command_to_history(struct sh_shell_context *ctx, char const *command) {
+    if (ctx->history_memory.count == MAX_HISTORY) {
+        free(ctx->history_memory.commands[0]);
+        for (size_t i = 1; i < MAX_HISTORY; i++) {
+            ctx->history_memory.commands[i - 1] = ctx->history_memory
+                                                      .commands[i];
+        }
+        ctx->history_memory.count--;
+    }
+    ctx->history_memory.commands[ctx->history_memory.count] = strdup(command);
+    ctx->history_memory.count++;
+}
+
+char *get_command_by_number(struct sh_shell_context *ctx, size_t number) {
+    if (number < 1 || number > ctx->history_memory.count) {
+        fprintf(stderr, "error: no such command in history\n");
+        return NULL;
+    }
+    return ctx->history_memory.commands[number - 1];
+}
+
+// Function to get the last command starting with a specified prefix
+char *get_command_by_prefix(struct sh_shell_context *ctx, char const *prefix) {
+    char *last_command = NULL;
+    for (size_t i = ctx->history_memory.count - 1; i >= 0; i--) {
+        if (strncmp(ctx->history_memory.commands[i], prefix, strlen(prefix))
+            == 0)
+        {
+            last_command = strdup(ctx->history_memory.commands[i]);
+            break;
+        }
+    }
+    return last_command;
+}

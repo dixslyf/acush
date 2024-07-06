@@ -1,8 +1,10 @@
 #include <assert.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -76,6 +78,32 @@ pid_t spawn(
 
 struct sh_run_result run(struct sh_shell_context *ctx, char *line) {
     // TODO: don't print error messages here — propagate errors to the caller.
+
+    // Preserve the original line for history.
+    char *original_line = strdup(line);
+
+    if (line[0] == '!') {
+        char *expanded_command = NULL;
+        if (isdigit(line[1])) {
+            size_t command_number = strtoul(&line[1], NULL, 10);
+            expanded_command = get_command_by_number(ctx, command_number);
+        } else {
+            // Skip the '!' character and pass the rest as prefix to fetch
+            // command.
+            expanded_command = get_command_by_prefix(ctx, &line[1]);
+        }
+        if (expanded_command == NULL) {
+            free(original_line);
+        }
+        printf("%s\n", expanded_command); // Echo the command.
+        line = strdup(expanded_command);
+    }
+
+    add_command_to_history(
+        ctx,
+        original_line
+    );                   // Add the original command to history
+    free(original_line); // Free the preserved line
 
     struct sh_run_result result = (struct sh_run_result) {
         .error_count = 0,
