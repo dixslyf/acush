@@ -8,6 +8,9 @@
 #include "input.h"
 
 #define CH_BACKSPACE 127
+
+#define C0_BACKSPACE 0x08
+
 #define CSI_START_INTRO_1 27
 #define CSI_START_INTRO_2 '['
 #define CSI_UP 'A'
@@ -115,7 +118,7 @@ ssize_t read_input(
         }
 
         // Handle backspace.
-        if (c == CH_BACKSPACE) {
+        if (c == CH_BACKSPACE || c == C0_BACKSPACE) {
             handle_backspace(&input_ctx);
             continue;
         }
