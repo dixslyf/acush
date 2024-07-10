@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <glob.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -111,6 +112,19 @@ void init_lex_context(struct sh_lex_context *ctx_out, char const *input) {
 }
 
 enum sh_lex_result lex(struct sh_lex_context *ctx) {
+    // Allocate memory for the concatenation buffer if not yet done.
+    if (ctx->catbuf == NULL) {
+        size_t new_catbuf_capacity = 16;
+        char *new_catbuf = malloc(sizeof(char) * new_catbuf_capacity);
+        if (new_catbuf == NULL) {
+          return SH_LEX_MEMORY_ERROR;
+        }
+
+        ctx->catbuf_capacity = new_catbuf_capacity;
+        ctx->catbuf = new_catbuf;
+        ctx->catbuf[0] = '\0';
+    }
+
     // Keep track of the return value.
     enum sh_lex_result result = SH_LEX_ONGOING;
 
@@ -441,9 +455,9 @@ enum sh_end_word_result end_word(struct sh_lex_context *ctx) {
         goto ret;
     }
 
-    // If there is no match, we follow bash's behaviour and treat the word
-    // literally.
-    if (glob_ret == GLOB_NOMATCH) {
+    // If there is no match or any other error, we follow bash's behaviour and
+    // treat the word literally.
+    if (glob_ret == GLOB_NOMATCH || glob_ret < 0) {
         // We must first remove backslashes since they are no longer needed.
         char *pread = ctx->catbuf;
         char *pwrite = ctx->catbuf;
