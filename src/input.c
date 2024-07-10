@@ -10,6 +10,8 @@
 #define CH_BACKSPACE 127
 
 #define C0_BACKSPACE 0x08
+#define C0_START 0x00
+#define C0_END 0x1F
 
 #define CSI_START_INTRO_1 27
 #define CSI_START_INTRO_2 '['
@@ -120,6 +122,11 @@ ssize_t read_input(
         // Handle backspace.
         if (c == CH_BACKSPACE || c == C0_BACKSPACE) {
             handle_backspace(&input_ctx);
+            continue;
+        }
+
+        // Ignore other C0 control codes.
+        if (c >= C0_START && c <= C0_END) {
             continue;
         }
 
