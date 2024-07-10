@@ -123,6 +123,11 @@ void run_ast(
     struct sh_ast_root const *root,
     char const *line
 ) {
+    // Nothing to run.
+    if (root->emptiness == SH_ROOT_EMPTY) {
+        return;
+    }
+
     run_cmd_line(ctx, result, &root->cmd_line, line);
 }
 
@@ -132,11 +137,6 @@ void run_cmd_line(
     struct sh_ast_cmd_line const *cmd_line,
     char const *line
 ) {
-    // Empty line — nothing to run.
-    if (cmd_line == NULL) {
-        return;
-    }
-
     if (cmd_line->type == SH_COMMAND_REPEAT) {
         char *endptr;
         size_t cmd_one_idx = strtoul(cmd_line->repeat_query, &endptr, 10);
