@@ -18,6 +18,7 @@
 #define CSI_UP 'A'
 #define CSI_DOWN 'B'
 #define CSI_FORWARD 'C'
+#define CSI_CPR 'R'
 
 #define DSR_POS "6n"
 
@@ -47,20 +48,17 @@ void init_input_context(
 
 void handle_backspace(struct sh_input_context *input_ctx);
 
-bool handle_csi_code(struct sh_input_context *input_ctx, char code);
+char handle_csi(struct sh_input_context *input_ctx);
 
 bool handle_up(struct sh_input_context *input_ctx);
 
 void handle_down(struct sh_input_context *input_ctx);
 
+bool handle_cpr(struct sh_input_context *input_ctx, char const *bytes);
+
 void insert_char(struct sh_input_context *input_ctx, char c);
 
-struct sh_cursor_pos {
-    size_t line;
-    size_t col;
-};
-
-bool get_cursor_pos(struct sh_cursor_pos *out);
+bool request_cursor_pos();
 
 void terminate_input(struct sh_input_context *input_ctx);
 
@@ -115,18 +113,13 @@ ssize_t read_input(
         input_ctx.edit_buf = new_edit_buf;
     }
 
+    // Request the cursor's position.
+    // Response from the terminal is retrieved from the CPR control sequence
+    // (handled in `handle_csi()`).
+    request_cursor_pos();
+
     char c;
     while ((c = getchar()) != '\n') {
-        // Update the cursor's position.
-        // Note: This can potentially consume the user's input if the user
-        // presses multiple keys simultaneously. However, this is extremely
-        // unlikely and the user would have to press many keys at the same time.
-        // They wouldn't notice if some of those keys were consumed.
-        struct sh_cursor_pos pos;
-        get_cursor_pos(&pos);
-        input_ctx.cursor_line = pos.line;
-        input_ctx.cursor_col = pos.col;
-
         // Grow the edit buffer if needed.
         if (input_ctx.edit_buf_len + 1 >= input_ctx.edit_buf_capacity) {
             size_t new_buf_capacity = input_ctx.edit_buf_capacity * 2;
@@ -142,26 +135,27 @@ ssize_t read_input(
             input_ctx.edit_buf_capacity = new_buf_capacity;
         }
 
-        // Handle backspace.
-        if (c == CH_BACKSPACE || c == C0_BACKSPACE) {
-            handle_backspace(&input_ctx);
-            continue;
-        }
-
-        // Ignore other C0 control codes.
-        if (c >= C0_START && c <= C0_END) {
-            continue;
-        }
-
-        // Handle CSI escape sequences.
+        bool should_request_cursor_update = true;
         if (c == CSI_START_INTRO_1 && (c = getchar()) == CSI_START_INTRO_2) {
-            char code = getchar();
-            handle_csi_code(&input_ctx, code);
-            continue;
+            // Handle CSI control sequences.
+            // We don't want to request for a cursor update if we just handled
+            // `CSI_CPR` since that would cause an infinite loop.
+            if (handle_csi(&input_ctx) == CSI_CPR) {
+                should_request_cursor_update = false;
+            }
+        } else if (c == CH_BACKSPACE || c == C0_BACKSPACE) {
+            // Handle backspace.
+            handle_backspace(&input_ctx);
+        } else if (c >= C0_START && c <= C0_END) {
+            // Ignore other C0 control codes.
+        } else {
+            // Handle other characters.
+            insert_char(&input_ctx, c);
         }
 
-        // Handle other characters.
-        insert_char(&input_ctx, c);
+        if (should_request_cursor_update) {
+            request_cursor_pos();
+        }
     }
 
     // We only reach this point if the user enters a newline.
@@ -189,8 +183,9 @@ void init_input_context(
     struct sh_shell_context const *sh_ctx
 ) {
     *input_ctx = (struct sh_input_context) {
-        .cursor_line = 0,
-        .cursor_col = 0,
+        // These are 1-indexed!
+        .cursor_line = 1,
+        .cursor_col = 1,
 
         .edit_buf = NULL,
         .edit_buf_capacity = 0,
@@ -243,19 +238,50 @@ void handle_backspace(struct sh_input_context *input_ctx) {
     input_ctx->edit_buf_cursor--;
 }
 
-bool handle_csi_code(struct sh_input_context *input_ctx, char code) {
-    switch (code) {
+char handle_csi(struct sh_input_context *input_ctx) {
+    char buf[32]; // Should be more than large enough.
+    size_t idx = 0;
+    char c = '\0';
+    do {
+        c = getchar();
+        if (c == EOF) {
+            return false;
+        }
+
+        buf[idx] = c;
+        idx++;
+
+        // The buffer was too small, so we need to clean up a little. Extremely
+        // unlikely to happen.
+        if (idx >= sizeof(buf)) {
+            // Consume all the input characters until the next alphabetical
+            // character.
+            while (!(c >= 'A' && c <= 'z')) {
+                c = getchar();
+            }
+            return false;
+        }
+    } while (!(c >= 'A' && c <= 'z'));
+    // We will assume that sequences are ended with an alphabetical
+    // character (seems to be the case).
+
+    buf[idx] = '\0';
+
+    switch (buf[idx - 1]) {
     case CSI_UP:
-        return handle_up(input_ctx);
+        handle_up(input_ctx);
+        return CSI_UP;
     case CSI_DOWN:
         handle_down(input_ctx);
+        return CSI_DOWN;
+    case CSI_CPR:
+        handle_cpr(input_ctx, buf);
+        return CSI_CPR;
         break;
     default:
         // Don't know how to handle, so do nothing.
-        break;
+        return '\0';
     }
-
-    return true;
 }
 
 bool handle_up(struct sh_input_context *input_ctx) {
@@ -329,7 +355,6 @@ bool handle_up(struct sh_input_context *input_ctx) {
 }
 
 void handle_down(struct sh_input_context *input_ctx) {
-    // Down arrow.
     if (input_ctx->sh_ctx->history_count == 0
         || input_ctx->history_idx >= input_ctx->sh_ctx->history_count)
     {
@@ -368,6 +393,19 @@ void handle_down(struct sh_input_context *input_ctx) {
     printf("%s", input_ctx->edit_buf);
 }
 
+bool handle_cpr(struct sh_input_context *input_ctx, char const *bytes) {
+    // Parse the line and column numbers.
+    size_t line;
+    size_t col;
+    if (sscanf(bytes, "%lu;%lu", &line, &col) != 2) {
+        return false;
+    }
+
+    input_ctx->cursor_line = line;
+    input_ctx->cursor_col = col;
+    return true;
+}
+
 void insert_char(struct sh_input_context *input_ctx, char c) {
     input_ctx->edit_buf[input_ctx->edit_buf_len] = c;
     input_ctx->edit_buf_len++;
@@ -377,43 +415,8 @@ void insert_char(struct sh_input_context *input_ctx, char c) {
     putchar(c);
 }
 
-bool get_cursor_pos(struct sh_cursor_pos *out) {
-    if (printf("%c%c%s", CSI_START_INTRO_1, CSI_START_INTRO_2, DSR_POS) != 4) {
-        return false;
-    }
-
-    char buf[16];
-    size_t idx = 0;
-    while (idx < sizeof(buf) - 1) {
-        char c = getchar();
-        if (c == EOF) {
-            return false;
-        }
-
-        buf[idx] = c;
-        if (c == 'R') {
-            break;
-        }
-
-        idx++;
-    }
-
-    buf[idx] = '\0';
-
-    if (buf[0] != CSI_START_INTRO_1 || buf[1] != CSI_START_INTRO_2) {
-        return false;
-    }
-
-    size_t line;
-    size_t col;
-    if (sscanf(&buf[2], "%lu;%lu", &line, &col) != 2) {
-        return false;
-    }
-
-    out->line = line;
-    out->col = col;
-
-    return true;
+bool request_cursor_pos() {
+    return printf("%c%c%s", CSI_START_INTRO_1, CSI_START_INTRO_2, DSR_POS) == 4;
 }
 
 void terminate_input(struct sh_input_context *input_ctx) {
