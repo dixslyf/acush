@@ -236,6 +236,15 @@ void handle_backspace(struct sh_input_context *input_ctx) {
 
         // Finally, we erase the character at the current position.
         printf(" ");
+
+        // After inserting a character at the last column, the terminal gets
+        // into a weird state where the cursor is at the last column, but
+        // printing a character will move the cursor to the next line and
+        // display the character there (i.e., at the first column of the next
+        // line). Since we printed a " " at the last column, this behaviour will
+        // occur. Moving the cursor forward (even though it is at the last
+        // column) seems to remove this state.
+        printf("%c%c%c", CSI_START_INTRO_1, CSI_START_INTRO_2, CSI_FORWARD);
     } else {
         // "\b" moves the cursor back by one and does not actually erase
         // any characters. Hence, we use " " to overwrite the character
