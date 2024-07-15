@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -25,6 +26,9 @@
 struct sh_input_context {
     size_t cursor_line; /**< The line the cursor is on. */
     size_t cursor_col;  /**< The column the cursor is on. */
+
+    unsigned short win_width;  /**< Width of the terminal window. */
+    unsigned short win_height; /**< Height of the terminal window. */
 
     char *edit_buf; /**< Buffer containing the text to edit and display. */
     size_t edit_buf_capacity; /**< Capacity of the edit buffer. */
@@ -57,6 +61,8 @@ void handle_down(struct sh_input_context *input_ctx);
 bool handle_cpr(struct sh_input_context *input_ctx, char const *bytes);
 
 void insert_char(struct sh_input_context *input_ctx, char c);
+
+bool update_win_size(struct sh_input_context *input_ctx);
 
 bool request_cursor_pos();
 
@@ -112,6 +118,8 @@ ssize_t read_input(
         input_ctx.edit_buf_capacity = new_edit_buf_capacity;
         input_ctx.edit_buf = new_edit_buf;
     }
+
+    update_win_size(&input_ctx);
 
     // Request the cursor's position.
     // Response from the terminal is retrieved from the CPR control sequence
@@ -184,8 +192,11 @@ void init_input_context(
 ) {
     *input_ctx = (struct sh_input_context) {
         // These are 1-indexed!
-        .cursor_line = 1,
-        .cursor_col = 1,
+        .cursor_line = 0,
+        .cursor_col = 0,
+
+        .win_width = 0,
+        .win_height = 0,
 
         .edit_buf = NULL,
         .edit_buf_capacity = 0,
@@ -413,6 +424,24 @@ void insert_char(struct sh_input_context *input_ctx, char c) {
 
     // Write the character to `stdout`.
     putchar(c);
+
+    // Check if the cursor is at the last column.
+    update_win_size(input_ctx);
+    if (input_ctx->cursor_col == input_ctx->win_width) {
+        // Move the cursor down by one line and to the first column.
+        printf("\n");
+    }
+}
+
+bool update_win_size(struct sh_input_context *input_ctx) {
+    struct winsize winsz;
+    if (ioctl(STDIN_FILENO, TIOCGWINSZ, &winsz) < 0) {
+        return false;
+    }
+
+    input_ctx->win_width = winsz.ws_col;
+    input_ctx->win_height = winsz.ws_row;
+    return true;
 }
 
 bool request_cursor_pos() {
