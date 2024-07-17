@@ -245,6 +245,9 @@ void handle_backspace(struct sh_input_context *input_ctx) {
         // occur. Moving the cursor forward (even though it is at the last
         // column) seems to remove this state.
         printf("%c%c%c", CSI_START_INTRO_1, CSI_START_INTRO_2, CSI_FORWARD);
+
+        input_ctx->cursor_col = input_ctx->win_width;
+        input_ctx->cursor_line--;
     } else {
         // "\b" moves the cursor back by one and does not actually erase
         // any characters. Hence, we use " " to overwrite the character
@@ -252,6 +255,8 @@ void handle_backspace(struct sh_input_context *input_ctx) {
         // " " was written, we need to move the cursor back again using
         // "\b".
         printf("\b \b");
+
+        input_ctx->cursor_col--;
     }
 
     input_ctx->edit_buf_len--;
@@ -310,8 +315,9 @@ bool handle_up(struct sh_input_context *input_ctx) {
     }
 
     // Delete all characters on `stdout`.
-    for (size_t idx = 0; idx < input_ctx->edit_buf_len; idx++) {
-        printf("\b \b");
+    size_t char_count = input_ctx->edit_buf_len;
+    for (size_t idx = 0; idx < char_count; idx++) {
+        handle_backspace(input_ctx);
     }
 
     // If we're moving away from the new commandline, then we need
@@ -382,8 +388,9 @@ void handle_down(struct sh_input_context *input_ctx) {
     }
 
     // Delete all characters on `stdout`.
-    for (size_t idx = 0; idx < input_ctx->edit_buf_len; idx++) {
-        printf("\b \b");
+    size_t char_count = input_ctx->edit_buf_len;
+    for (size_t idx = 0; idx < char_count; idx++) {
+        handle_backspace(input_ctx);
     }
 
     // Copy the next line into the buffer.
