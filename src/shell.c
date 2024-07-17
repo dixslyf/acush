@@ -76,7 +76,7 @@ int main() {
             continue;
         }
 
-        struct sh_run_result run_result = run(&sh_ctx, line);
+        run(&sh_ctx, line);
         if (sh_ctx.should_exit) {
             should_exit = true;
             exit_code = sh_ctx.exit_code;

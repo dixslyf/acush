@@ -9,15 +9,6 @@
 struct sh_ast_root;
 struct sh_shell_context;
 
-struct sh_run_result {
-    size_t error_count;
-    struct sh_run_error *errors;
-};
-
-struct sh_run_error {
-    // TODO:
-};
-
-struct sh_run_result run(struct sh_shell_context *ctx, char const *line);
+void run(struct sh_shell_context *ctx, char const *line);
 
 #endif

@@ -42,27 +42,23 @@ struct sh_spawn_desc {
 
 void run_ast(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_ast_root const *root,
     char const *line
 );
 
 void run_cmd_line(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line,
     char const *line
 );
 
 void run_job_desc(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 );
 
 pid_t run_cmd(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     pid_t pgid,
     enum sh_job_type job_type,
@@ -77,12 +73,7 @@ pid_t spawn(
     struct sh_spawn_desc desc
 );
 
-struct sh_run_result run(struct sh_shell_context *ctx, char const *line) {
-    struct sh_run_result result = (struct sh_run_result) {
-        .error_count = 0,
-        .errors = NULL,
-    };
-
+void run(struct sh_shell_context *ctx, char const *line) {
     struct sh_lex_context lex_ctx;
     init_lex_context(&lex_ctx, line);
 
@@ -108,18 +99,17 @@ struct sh_run_result run(struct sh_shell_context *ctx, char const *line) {
         if (parse_result != SH_PARSE_SUCCESS) {
             printf("error: failed to parse command line\n");
         } else {
-            run_ast(ctx, &result, &ast, line);
+            run_ast(ctx, &ast, line);
             destroy_ast(&ast);
         }
     }
     destroy_lex_context(&lex_ctx);
 
-    return result;
+    return;
 }
 
 void run_ast(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_ast_root const *root,
     char const *line
 ) {
@@ -128,12 +118,11 @@ void run_ast(
         return;
     }
 
-    run_cmd_line(ctx, result, &root->cmd_line, line);
+    run_cmd_line(ctx, &root->cmd_line, line);
 }
 
 void run_cmd_line(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_ast_cmd_line const *cmd_line,
     char const *line
 ) {
@@ -171,13 +160,12 @@ void run_cmd_line(
     add_line_to_history(ctx, line);
 
     for (size_t idx = 0; idx < cmd_line->job_count; idx++) {
-        run_job_desc(ctx, result, &cmd_line->job_descs[idx]);
+        run_job_desc(ctx, &cmd_line->job_descs[idx]);
     }
 }
 
 void run_job_desc(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_job_desc const *job_desc
 ) {
     // Since the SIGCHLD handler consumes child processes, we need to block
@@ -206,7 +194,6 @@ void run_job_desc(
 
         pid_t pid = run_cmd(
             ctx,
-            result,
             &job->piped_cmds[0],
             pgid,
             job_desc->type,
@@ -254,7 +241,6 @@ void run_job_desc(
 
             pid_t pid = run_cmd(
                 ctx,
-                result,
                 &job->piped_cmds[idx],
                 pgid,
                 job_desc->type,
@@ -289,13 +275,8 @@ void run_job_desc(
         // This means the last pipe will not have been closed properly, so we
         // need to close it.
         if (pipes_len > 0 && pipes_len < job->cmd_count - 1) {
-            if (close(pipes[pipes_len - 1][0]) < 0) {
-                // TODO: handle error
-            }
-
-            if (close(pipes[pipes_len - 1][1]) < 0) {
-                // TODO: handle error
-            }
+            close(pipes[pipes_len - 1][0]);
+            close(pipes[pipes_len - 1][1]);
         }
     }
 
@@ -313,7 +294,6 @@ void run_job_desc(
 
         // Wait for the processes.
         size_t wait_successes = 0;
-        // TODO: what to do with `info`?
         siginfo_t info;
         while (wait_successes < pids_len) {
             pid_t wait_ret = waitid(P_PGID, pgid, &info, WEXITED | WSTOPPED);
@@ -356,7 +336,6 @@ void run_job_desc(
 
 pid_t run_cmd(
     struct sh_shell_context *ctx,
-    struct sh_run_result *result,
     struct sh_ast_cmd const *cmd,
     pid_t pgid,
     enum sh_job_type job_type,
@@ -377,13 +356,11 @@ pid_t run_cmd(
 
     // Handle running builtins in the foreground.
     if (job_type == SH_JOB_FG && is_builtin(argv[0])) {
-        // TODO: error handling
         run_builtin_fg(ctx, desc);
         return 0;
     }
 
     // Run non-builtins. Also run background built-ins.
-    // TODO: write error to `result` on error
     pid_t pid = spawn(ctx, pgid, desc);
     return pid;
 }
@@ -403,9 +380,7 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
         // We can close this safely because the previous command would already
         // have inherited the write end of the pipe if it was spawned in a child
         // process.
-        if (close(desc.pipe_desc.write_fd_left) < 0) {
-            // TODO: handle error
-        }
+        close(desc.pipe_desc.write_fd_left);
 
         // Redirect stdin to the read end.
         fds.stdin = desc.pipe_desc.read_fd_left;
@@ -440,10 +415,6 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
             0644
         );
 
-        if (fd_to < 0) {
-            // TODO: handle error
-        }
-
         int *fds_mem;
         int std_fileno;
         switch (redir.type) {
@@ -462,8 +433,8 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
         }
 
         // If we're overwriting a previous redirection, close it.
-        if (*fds_mem != std_fileno && close(*fds_mem) < 0) {
-            // TODO: handle error
+        if (*fds_mem != std_fileno) {
+            close(*fds_mem);
         }
         *fds_mem = fd_to;
     }
@@ -471,16 +442,16 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     run_builtin(ctx, fds, desc.argc, desc.argv);
 
     // Close file descriptors if there were redirections.
-    if (fds.stdout != STDOUT_FILENO && close(fds.stdout) < 0) {
-        // TODO: handle error
+    if (fds.stdout != STDOUT_FILENO) {
+        close(fds.stdout);
     }
 
-    if (fds.stdin != STDIN_FILENO && close(fds.stdin) < 0) {
-        // TODO: handle error
+    if (fds.stdin != STDIN_FILENO) {
+        close(fds.stdin);
     }
 
-    if (fds.stderr != STDERR_FILENO && close(fds.stderr) < 0) {
-        // TODO: handle error
+    if (fds.stderr != STDERR_FILENO) {
+        close(fds.stderr);
     }
 
     return 0;
@@ -521,44 +492,33 @@ pid_t spawn(
         // Handle redirection of stdin for piping.
         if (desc.pipe_desc.redirect_stdin) {
             // Close the write end.
-            if (close(desc.pipe_desc.write_fd_left) < 0) {
-                // TODO: handle error
-            }
+            close(desc.pipe_desc.write_fd_left);
 
             // Redirect stdin to the read end.
             if (dup2(desc.pipe_desc.read_fd_left, STDIN_FILENO) < 0) {
-                // TODO: handle error
+                perror("dup2");
             }
 
             // Once the redirection is done, we don't need the original file
             // descriptor around, so we close it. Even if the redirection
             // failed, we still don't need the original file descriptor anymore.
-            if (close(desc.pipe_desc.read_fd_left) < 0) {
-                // Once the redirection is done, we don't need the original file
-                // descriptor around, so we close it.
-
-                // TODO: handle error
-            }
+            close(desc.pipe_desc.read_fd_left);
         }
 
         // Handle redirection of stdout for piping.
         if (desc.pipe_desc.redirect_stdout) {
             // Close the read end.
-            if (close(desc.pipe_desc.read_fd_right) < 0) {
-                // TODO: handle error
-            }
+            close(desc.pipe_desc.read_fd_right);
 
             // Redirect stdout to the write end.
             if (dup2(desc.pipe_desc.write_fd_right, STDOUT_FILENO) < 0) {
-                // TODO: handle error
+                perror("dup2");
             }
 
             // Once the redirection is done, we don't need the original file
             // descriptor around, so we close it. Even if the redirection
             // failed, we still don't need the original file descriptor anymore.
-            if (close(desc.pipe_desc.write_fd_right) < 0) {
-                // TODO: handle error
-            }
+            close(desc.pipe_desc.write_fd_right);
         }
 
         // Handle redirection for `>`, `<` and `2>`.
@@ -580,7 +540,7 @@ pid_t spawn(
             );
 
             if (fd_to < 0) {
-                // TODO: handle error
+                perror("open");
                 continue;
             }
 
@@ -591,15 +551,13 @@ pid_t spawn(
                                      : STDERR_FILENO);
 
             if (dup2(fd_to, fd_from) < 0) {
-                // TODO: handle error
+                perror("dup2");
             }
 
             // Once the redirection is done, we don't need the original file
             // descriptor around, so we close it. Even if the redirection
             // failed, we still don't need the original file descriptor anymore.
-            if (close(fd_to) < 0) {
-                // TODO: handle error
-            }
+            close(fd_to);
         }
 
         // Handle builtins that are run in the background.
@@ -632,7 +590,6 @@ pid_t spawn(
 
         // Set the group ID for the child process.
         if (setpgid(pid, pgid) < 0) {
-            // TODO: properly handle error
             perror("setpgid");
         }
 
@@ -650,13 +607,10 @@ pid_t spawn(
         // only inherit the read end. This is an equally valid approach, but I
         // don't really like the lack of symmetry in this second approach.
         if (desc.pipe_desc.redirect_stdin) {
-            if (close(desc.pipe_desc.read_fd_left) < 0) {
-                // TODO: handle error
-            }
-
-            if (close(desc.pipe_desc.write_fd_left) < 0) {
-                // TODO: handle error
-            }
+            // We can't do anything much if `close()` fails:
+            // https://stackoverflow.com/questions/33114152/what-to-do-if-a-posix-close-call-fails
+            close(desc.pipe_desc.read_fd_left);
+            close(desc.pipe_desc.write_fd_left);
         }
     }
 
