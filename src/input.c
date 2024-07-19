@@ -314,12 +314,6 @@ bool handle_up(struct sh_input_context *input_ctx) {
         return true;
     }
 
-    // Delete all characters on `stdout`.
-    size_t char_count = input_ctx->edit_buf_len;
-    for (size_t idx = 0; idx < char_count; idx++) {
-        handle_backspace(input_ctx);
-    }
-
     // If we're moving away from the new commandline, then we need
     // to save it.
     if (input_ctx->history_idx == input_ctx->sh_ctx->history_count) {
@@ -337,6 +331,7 @@ bool handle_up(struct sh_input_context *input_ctx) {
             input_ctx->new_cmdline = new_buffer;
             input_ctx->new_cmdline_capacity = new_buf_capacity;
         }
+
         strncpy(
             input_ctx->new_cmdline,
             input_ctx->edit_buf,
@@ -344,6 +339,12 @@ bool handle_up(struct sh_input_context *input_ctx) {
         );
         input_ctx->new_cmdline_len = input_ctx->edit_buf_len;
         input_ctx->new_cmdline[input_ctx->new_cmdline_len] = '\0';
+    }
+
+    // Delete all characters on `stdout`.
+    size_t char_count = input_ctx->edit_buf_len;
+    for (size_t idx = 0; idx < char_count; idx++) {
+        handle_backspace(input_ctx);
     }
 
     // Copy the previous line into the edit buffer.
@@ -416,7 +417,7 @@ void handle_down(struct sh_input_context *input_ctx) {
     input_ctx->edit_buf_cursor = len;
     input_ctx->edit_buf[input_ctx->edit_buf_len] = '\0';
 
-    // Replace the outpu t on `stdout` with the next line.
+    // Replace the output on `stdout` with the next line.
     printf("%s", input_ctx->edit_buf);
 }
 
