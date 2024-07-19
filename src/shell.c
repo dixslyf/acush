@@ -178,7 +178,7 @@ void setup_signals() {
     // Set up SIGCHLD handler.
     struct sigaction sigact_chld;
     sigemptyset(&sigact_chld.sa_mask);
-    // Prevent `getline()` from getting interrupted.
+    // Prevent slow system calls from getting interrupted.
     // See `man sigaction` and search for `SA_RESTART`.
     sigact_chld.sa_flags = SA_RESTART;
     sigact_chld.sa_handler = handle_sigchld;

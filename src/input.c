@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -128,6 +129,14 @@ ssize_t read_input(
 
     char c;
     while ((c = getchar()) != '\n') {
+        if (c == EOF) {
+            if (errno == EINTR) {
+                continue;
+            } else {
+                perror("getchar");
+            }
+        }
+
         // Grow the edit buffer if needed.
         if (input_ctx.edit_buf_len + 1 >= input_ctx.edit_buf_capacity) {
             size_t new_buf_capacity = input_ctx.edit_buf_capacity * 2;
