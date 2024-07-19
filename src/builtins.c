@@ -10,6 +10,13 @@
 #include "builtins.h"
 #include "shell.h"
 
+enum sh_getcwd_error {
+    SH_GETCWD_SUCCESS = 0,
+    SH_GETCWD_MEMORY_ERROR,
+    SH_GETCWD_GENERIC_ERROR
+};
+enum sh_getcwd_error allocating_getcwd(char **out);
+
 bool is_builtin(char const *name) {
     return strcmp(name, "exit") == 0 || strcmp(name, "history") == 0
            || strcmp(name, "prompt") == 0 || strcmp(name, "pwd") == 0
@@ -163,35 +170,16 @@ run_pwd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
         return SH_PWD_UNEXPECTED_ARG_COUNT;
     }
 
-    // Initial buffer size for the current working directory.
-    // `PATH_MAX` from `<limits.h` is, unfortunately, not an accurate value for
-    // the true max path size. See
-    // https://stackoverflow.com/questions/9449241/where-is-path-max-defined-in-linux.
-    size_t size = 128;
-    char *cwd = malloc(sizeof(char) * size);
-    if (cwd == NULL) {
+    char *cwd;
+    switch (allocating_getcwd(&cwd)) {
+    case SH_GETCWD_SUCCESS:
+        break;
+    case SH_GETCWD_MEMORY_ERROR:
         dprintf(fds.stderr, "pwd: %s\n", strerror(errno));
         return SH_PWD_MEMORY_ERROR;
-    }
-
-    // Get the current working directory.
-    while (getcwd(cwd, size) == NULL) {
-        if (errno == ERANGE) {
-            // Buffer was too small, so increase its size.
-            size *= 2;
-            char *new_cwd = realloc(cwd, sizeof(char) * size);
-            if (new_cwd == NULL) {
-                free(cwd);
-                dprintf(fds.stderr, "pwd: %s\n", strerror(errno));
-                return SH_PWD_MEMORY_ERROR;
-            }
-            cwd = new_cwd;
-        } else {
-            // Some other error occurred.
-            free(cwd);
-            dprintf(fds.stderr, "pwd: %s\n", strerror(errno));
-            return SH_PWD_GENERIC_ERROR;
-        }
+    case SH_GETCWD_GENERIC_ERROR:
+        dprintf(fds.stderr, "pwd: %s\n", strerror(errno));
+        return SH_PWD_GENERIC_ERROR;
     }
 
     dprintf(fds.stdout, "%s\n", cwd);
@@ -211,14 +199,101 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
         return SH_CD_UNEXPECTED_ARG_COUNT;
     }
 
-    // Default to the user's home directory if no argument is given.
-    // It seems like `bash` also uses the `HOME` environment variable to get the
-    // home directory.
-    char const *dir = argc == 2 ? argv[1] : getenv("HOME");
-    if (chdir(dir) < 0) {
+    char *oldpwd = NULL;
+    switch (allocating_getcwd(&oldpwd)) {
+    case SH_GETCWD_SUCCESS:
+        break;
+    case SH_GETCWD_MEMORY_ERROR:
+        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        return SH_CD_MEMORY_ERROR;
+    case SH_GETCWD_GENERIC_ERROR:
         dprintf(fds.stderr, "cd: %s\n", strerror(errno));
         return SH_CD_GENERIC_ERROR;
     }
 
+    // Default to the user's home directory if no argument is given.
+    // It seems like `bash` also uses the `HOME` environment variable to get the
+    // home directory.
+    char const *dir;
+    bool should_pwd = false;
+    if (argc == 2 && strcmp(argv[1], "-") == 0) {
+        dir = getenv("OLDPWD");
+        should_pwd = true;
+    } else if (argc == 2) {
+        dir = argv[1];
+    } else {
+        dir = getenv("HOME");
+    }
+
+    if (chdir(dir) < 0) {
+        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        free(oldpwd);
+        return SH_CD_GENERIC_ERROR;
+    }
+
+    if (should_pwd) {
+        char const *argv[1] = {"pwd"};
+        if (run_pwd(fds, 1, argv)) {
+            free(oldpwd);
+            return SH_CD_GENERIC_ERROR;
+        }
+    }
+
+    // We cannot simply use `dir` as it may be a relative path.
+    // The `PWD` environment variable should be set to a full path.
+    char *pwd = NULL;
+    switch (allocating_getcwd(&pwd)) {
+    case SH_GETCWD_SUCCESS:
+        break;
+    case SH_GETCWD_MEMORY_ERROR:
+        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        return SH_CD_MEMORY_ERROR;
+    case SH_GETCWD_GENERIC_ERROR:
+        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        return SH_CD_GENERIC_ERROR;
+    }
+
+    if (setenv("OLDPWD", oldpwd, 1) < 0 || setenv("PWD", pwd, 1) < 0) {
+        perror("cd");
+        free(oldpwd);
+        free(pwd);
+        return SH_CD_GENERIC_ERROR;
+    };
+
+    free(oldpwd);
+    free(pwd);
     return SH_CD_SUCCESS;
+}
+
+enum sh_getcwd_error allocating_getcwd(char **out) {
+    // Initial buffer size for the current working directory.
+    // `PATH_MAX` from `<limits.h` is, unfortunately, not an accurate value for
+    // the true max path size. See
+    // https://stackoverflow.com/questions/9449241/where-is-path-max-defined-in-linux.
+    size_t size = 128;
+    char *curdir = malloc(sizeof(char) * size);
+    if (curdir == NULL) {
+        return SH_GETCWD_MEMORY_ERROR;
+    }
+
+    // Get the current working directory.
+    while (getcwd(curdir, size) == NULL) {
+        if (errno == ERANGE) {
+            // Buffer was too small, so increase its size.
+            size *= 2;
+            char *new_cwd = realloc(curdir, sizeof(char) * size);
+            if (new_cwd == NULL) {
+                free(curdir);
+                return SH_GETCWD_MEMORY_ERROR;
+            }
+            curdir = new_cwd;
+        } else {
+            // Some other error occurred.
+            free(curdir);
+            return SH_GETCWD_GENERIC_ERROR;
+        }
+    }
+
+    *out = curdir;
+    return SH_GETCWD_SUCCESS;
 }

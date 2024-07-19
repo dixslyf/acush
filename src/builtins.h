@@ -152,6 +152,7 @@ run_pwd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv);
 enum sh_cd_result {
     SH_CD_SUCCESS = 0,          /**< Successful execution */
     SH_CD_UNEXPECTED_ARG_COUNT, /**< Unexpected number of arguments */
+    SH_CD_MEMORY_ERROR,         /**< Memory error */
     SH_CD_GENERIC_ERROR,        /**< Generic error */
 };
 
