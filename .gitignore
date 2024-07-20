@@ -3,3 +3,5 @@ build
 
 # clangd and bear
 compile_commands.json
+
+*.pdf

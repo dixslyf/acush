@@ -17,6 +17,8 @@
           clang-tools
           bear
           include-what-you-use
+
+          typst
         ];
       };
     });
