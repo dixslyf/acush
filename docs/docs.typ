@@ -189,3 +189,22 @@ Furthermore, the shell must satisfy the following requirements:
 
 - _Non-termination on `CTRL-C`, `CTRL-\` or `CTRL-Z`_:
   The shell must not be terminated when the user enters `CTRL-C`, `CTRL-\` or `CTRL-Z`.
+
+= Solution Discussion
+
+The main loop of the shell program consists of the following stages:
+
+  1. _Input handling_: Receiving and handling user input for a command line.
+
+  2. _Lexing_: Converting a command line string from the user into a sequence of tokens.
+
+  3. _Parsing_: Converting the sequence of tokens from the lexer into an abstract syntax tree~(AST).
+
+  4. _Running commands_: Executing the AST from the parser.
+
+Furthermore, the shell program maintains a shell context data structure
+that contains contextual information
+for the shell,
+such as the command history and prompt string.
+In the following sections, we describe the main aspects of the implementation of each stage.
+
