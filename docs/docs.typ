@@ -208,3 +208,56 @@ for the shell,
 such as the command history and prompt string.
 In the following sections, we describe the main aspects of the implementation of each stage.
 
+== Input Handling
+
+The code for input handling is found in `src/input.h` and `src/input.c`.
+
+Most terminals and terminal emulators default to _canonical mode_,
+in which input is line-buffered, editable and only sent to the program after the user enters a newline character.
+However, to implement command history navigation with the `Up` and `Down` arrow keys,
+the shell program must be able to access the character sequences for `Up` and `Down` immediately.
+Hence, the terminal needs to be put into _non-canonical mode_,
+in which said features are disabled
+— in particular, input is made available to the program immediately
+after the user enters a key or combination of keys.
+
+When gathering input, the shell program puts the terminal into non-canonical mode
+by disabling the `ICANON` flag using the `tcsetattr` function
+from `termios.h`.
+The shell also disables the `ECHO` flag
+to prevent the terminal from automatically
+displaying user input characters
+so that the character sequence for `Up` arrow, `Down` arrow and
+other keys or key combinations are not printed.
+Prior to calling `tcsetattr`,
+the attributes of the terminal are saved using `tcgetattr`
+— these attributes are restored after input handling.
+
+Although the shell only requires
+disabling line-buffering and automatic echoing,
+non-canonical mode also disables useful features like line-editing.
+Unfortunately, there does not appear to be a portable method
+of disabling only line-buffering.
+Ergo, the shell program re-implements
+some line-editing features, such as deleting characters with backspace.
+Re-implementing such features is complex and typically handled using external libraries like GNU~Readline.
+However, since us students are, sadly, not allowed to use external libraries,
+the shell program re-implements them from scratch.
+
+To implement command history navigation,
+the shell must be able to detect the `Up` and `Down` arrow keys.
+The terminal sends the `Up` and `Down` arrow keys to the program as ANSI CSI (control sequence introducer) escape code sequences,
+which begin with the prefix `\e[` (`ESC` followed by `[`).
+The `Up` and `Down` arrow keys are represented as `\e[A` and `\e[B` respectively.
+The shell detects these CSI escape sequences
+and uses the command history stored in the shell context data structure
+to select a previous or next command.
+
+However, printing the selected command in the history
+to the terminal is not straightforward either.
+The shell program first sends backspaces (`\b`) and other terminal control characters
+to erase the current line of input from the terminal display.
+Only after the current line of input is erased
+is the selected command printed to standard output
+to display it to the user.
+
