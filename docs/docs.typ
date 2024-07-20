@@ -102,7 +102,7 @@
 - `src/input.h`, `src/input.c`: Contains code for handling input from the user, including history navigation.
 
 - `src/raw_lex.h`, `src/raw_lex.c`, `src/lex.h`, `src/lex.c`: Contains code for lexing a line of user input into a sequence of tokens.
-Lexing is performed in two stages.
+  Lexing is performed in two stages (see @sec-lexing).
 
 - `src/parse.h`, `src/parse.c`: Contains code for parsing the sequence of tokens from lexing into an abstract syntax tree (AST).
 
@@ -261,3 +261,59 @@ Only after the current line of input is erased
 is the selected command printed to standard output
 to display it to the user.
 
+== Lexing <sec-lexing>
+
+The code for lexing is found in `src/raw_lex.h`, `src/raw_lex.c`, `src/lex.h` and `src/lex.c`.
+
+The purpose of lexing is turn a string into a sequence of lexical tokens.
+Tokens are units of text that are meaningful to the language.
+In the shell's case, the language is a command line
+whose grammar is specified by the assignment instructions.
+Examples of tokens for a shell may include:
+words~(quoted or unquoted strings), ampersands~(`&`), pipes~(`|`) and semicolons~(`;`).
+However, it is important to note that what constitutes a token is up to the implementation.
+For example, an implementor may decide to have quotes (`'` and `"`) as tokens and parse strings at a later stage;
+a different implementor, however,
+may decide to have quoted strings as tokens,
+such that string parsing is performed at the lexical tokenisation stage.
+
+In the case of our shell,
+we split lexing into two stages.
+The first stage is termed _raw_ lexing (code in `src/raw_lex.h` and `src/raw_lex.c`)
+and performs a low-level lex pass over the input.
+At this stage,
+no string parsing, glob expansion, handling of escape sequences or removal of whitespace is performed.
+That is, the result of the raw lex is _lossless_
+— it is possible to rebuild the original string input
+from the resulting tokens.
+
+The second stage (code in `src/lex.h` and `src/lex.c`)
+refines the tokens from raw lexing
+by performing string parsing, expanding wildcards,
+handling escapes sequences and removing whitespace.
+Thus, the resulting tokens are at a higher level
+and more easily parsed by the parser.
+
+This two-stage approach was chosen for several reasons:
+
+- _Maintainability and Flexibility_:
+  Using two stages is more flexible.
+  If the grammar changes or new tokens need to be added,
+  adjustments can be made to the appropriate stage without overhauling the entire lexer.
+  Furthermore, debugging and testing is made much easier. 
+
+- _Rebuilding of the original input_:
+  The original input can be recreated using the tokens from raw lexing.
+  This can be useful for more robust and detailed error reporting in future.
+
+- _Separation of concerns_:
+  The raw lexing focuses on basic tokenisation without context.
+  The second stage of lexing focuses on more complex tasks
+  that require context or specific rules.
+  This separation of concerns makes the codebase more modular and easier to maintain.
+
+- _Simplifies the parser_:
+  The token stream the parser sees is in a clean and high-level form.
+  Hence, the parser does not need to handle complex tasks like string parsing and glob expansion,
+  and can instead focus on handling the grammar of the shell.
+  This reduces the complexity of the parser significantly.
