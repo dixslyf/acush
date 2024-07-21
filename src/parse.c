@@ -546,7 +546,7 @@ void display_job(FILE *stream, struct sh_ast_job *job) {
 }
 
 void display_cmd(FILE *stream, struct sh_ast_cmd *cmd) {
-    fprintf(stream, "      COMMAND:\n");
+    fprintf(stream, "      COMMAND\n");
     display_simple_cmd(stream, &cmd->simple_cmd);
     for (size_t idx = 0; idx < cmd->redirection_count; idx++) {
         fprintf(
