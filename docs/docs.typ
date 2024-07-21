@@ -286,6 +286,11 @@ no string parsing, glob expansion, handling of escape sequences or removal of wh
 That is, the result of the raw lex is _lossless_
 — it is possible to rebuild the original string input
 from the resulting tokens.
+Instead of using the `strtok()` family of functions,
+raw lexing iterates over each character one by one.
+This provides much more flexibility and allows us
+to lex losslessly without any loss in performance
+(since `strtok()` iterates over the characters internally anyway).
 
 The second stage (code in `src/lex.h` and `src/lex.c`)
 refines the tokens from raw lexing
@@ -293,6 +298,14 @@ by performing string parsing, expanding wildcards,
 handling escapes sequences and removing whitespace.
 Thus, the resulting tokens are at a higher level
 and more easily parsed by the parser.
+Unfortunately, as the second-stage lexer has more complex tasks
+to perform, its implementation is also more complicated.
+For example, it has to perform I/O to expand globs
+and keep track of what token it is currently trying to lex.
+To handle this complexity, the second-stage lexer is implemented
+as a finite state machine,
+with its current state dependent on
+what token type it is currently trying to lex.
 
 This two-stage approach was chosen for several reasons:
 
@@ -300,7 +313,7 @@ This two-stage approach was chosen for several reasons:
   Using two stages is more flexible.
   If the grammar changes or new tokens need to be added,
   adjustments can be made to the appropriate stage without overhauling the entire lexer.
-  Furthermore, debugging and testing is made much easier. 
+  Furthermore, debugging and testing is made much easier.
 
 - _Rebuilding of the original input_:
   The original input can be recreated using the tokens from raw lexing.
