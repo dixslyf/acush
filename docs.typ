@@ -1,4 +1,4 @@
-#import "/constants.typ": *
+#import "/docs/constants.typ": *
 
 // SETUP
 
