@@ -7,4 +7,4 @@
 #let LIST_INDENT = 0.5cm
 #let OUTLINE_INDENT = 1em
 #let CODE_BLOCK_BG = rgb("#F8F9F9")
-#let CODE_TEXT_SIZE = 12pt
+#let CODE_TEXT_SIZE = 10pt

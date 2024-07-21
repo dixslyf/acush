@@ -1,4 +1,4 @@
-#import "/constants.typ": *
+#import "constants.typ": *
 
 // MIT No Attribution
 //

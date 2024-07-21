@@ -477,3 +477,32 @@ Furthermore, recursive descent parsers may not be as efficient as
 other types of parsers (e.g., LR parsers),
 especially if the grammar changes to require more complex lookahead or backtracking.
 
+= Source Code Listing
+
+#figure(
+  caption: `Makefile`,
+  display-code(read("Makefile"), lang: "Make")
+)
+
+#for file in (
+  "shell.h",
+  "shell.c",
+  "input.h",
+  "input.c",
+  "raw_lex.h",
+  "raw_lex.c",
+  "lex.h",
+  "lex.c",
+  "builtins.h",
+  "builtins.c",
+  "parse.h",
+  "parse.c",
+  "run.h",
+  "run.c",
+) {
+  file = "src/" + file
+  figure(
+    caption: raw(file),
+    display-c(read(file))
+  )
+}
