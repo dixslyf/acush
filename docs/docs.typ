@@ -331,6 +331,24 @@ This two-stage approach was chosen for several reasons:
   and can instead focus on handling the grammar of the shell.
   This reduces the complexity of the parser significantly.
 
+Nonetheless, our approach has downsides:
+
+- The second-stage lexer is complex and has, arguably, too many responsibilities.
+  Instead of letting it handle escape sequences, string parsing, glob expansion and whitespace removal all at once,
+  its complexity can be reduced by splitting it into separate components.
+  That is, we could have used more than two stages of lexing
+  to handle those tasks separately using a pipeline architecture.
+
+- Since lexing consists of multiple stages,
+  there is likely a small performance hit.
+  However, we believe this is a tradeoff worth making —
+  we sacrifice a bit of performance for better structure and readability.
+
+- The tokens from the raw lexer do not keep track of their indices
+  into the original input string.
+  If we want to use the raw tokens for better error reporting in future,
+  we would need to keep track of their indices or spans within the original input string.
+
 == Parsing
 
 The code for parsing is found in `src/parse.h` and `src/parse.c`.
@@ -447,4 +465,15 @@ using a separate root node type allows us to represent
 an empty input from the user,
 which would have been invalid for a command line node
 according to the grammar.
+
+One major disadvantage of using a recursive descent parser
+is that it is limited to LL($k$) grammars.
+If more shell constructs and features need to be implemented in future
+(e.g., subshells, variable expansion, conditionals),
+there is no guarantee that the grammar will remain LL($k$)
+or even context-free
+— there would need to be a rewrite of the parser in such a scenario.
+Furthermore, recursive descent parsers may not be as efficient as
+other types of parsers (e.g., LR parsers),
+especially if the grammar changes to require more complex lookahead or backtracking.
 
