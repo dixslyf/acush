@@ -317,3 +317,121 @@ This two-stage approach was chosen for several reasons:
   Hence, the parser does not need to handle complex tasks like string parsing and glob expansion,
   and can instead focus on handling the grammar of the shell.
   This reduces the complexity of the parser significantly.
+
+== Parsing
+
+The code for parsing is found in `src/parse.h` and `src/parse.c`.
+
+The purpose of parsing is to transform the sequence of tokens from lexing
+into an abstract syntax tree~(AST).
+An AST is a tree representation of the input text
+to facilitate subsequent operations.
+For the shell, the types of nodes for the AST are based on the grammar provided
+by the assignment instructions, with additional information
+to facilitate the execution of the AST.
+For convenience, the provided grammar is repeated below:
+
+#align(center,
+```
+  <command line> ::= <job>
+                   | <job> '&'
+                   | <job> '&' <command line>
+                   | <job> ';'
+                   | <job> ';' <command line>
+                   | '!' <string>
+           <job> ::= <command>
+                   | <job> '|' <command>
+       <command> ::= <simple command>
+                   | <simple command> '<' <pathname>
+                   | <simple command> '>' <pathname>
+                   | <simple command> '2>' <pathname>
+<simple command> ::= <pathname>
+                   | <simple command> <token>
+```
+)
+
+As an example, the following is a textual representation of the AST
+for the string `"echo hello > out & ls src | grep shell.c ; ls directory-that-does-not-exist 2 > error-out ; cat < error-out"`:
+
+#align(center,
+```
+ROOT
+  COMMAND_LINE
+    job count: 4
+    BACKGROUND JOB
+      command count: 1
+      COMMAND
+        SIMPLE COMMAND
+          argc: 2
+          argv: echo hello
+        redirect type: 0
+        redirect file: out
+    FOREGROUND JOB
+      command count: 2
+      COMMAND
+        SIMPLE COMMAND
+          argc: 2
+          argv: ls src
+      COMMAND
+        SIMPLE COMMAND
+          argc: 2
+          argv: grep shell.c
+    FOREGROUND JOB
+      command count: 1
+      COMMAND
+        SIMPLE COMMAND
+          argc: 2
+          argv: ls directory-that-does-not-exist
+        redirect type: 2
+        redirect file: error-out
+    FOREGROUND JOB
+      command count: 1
+      COMMAND
+        SIMPLE COMMAND
+          argc: 1
+          argv: cat
+        redirect type: 1
+        redirect file: error-out
+```
+)
+
+There are many different types of parsers and ways to implement them.
+Many pieces of software use tools, such as Flex and Bison, to generate their lexers and parsers.
+Of course, since we cannot use these tools for this assignment,
+the parser (and lexer) are handwritten.
+In this case, the parser was implemented as a _recursive descent parser_.
+This choice was made for the following reasons:
+
+- _Top-down parsing_:
+  Recursive descent parsers parse the input from the root node
+  and work recursively downwards to the leaf nodes.
+  Top-down parsing is often much more intuitive than bottom-up parsing.
+
+- _Direct representation of the grammar_:
+  The structure of a recursive descent parser
+  mirrors the grammar rules directly,
+  making it easier to see how the parser relates to the grammar.
+  In particular, each non-terminal in the grammar is implemented as a separate function in the parser's code.
+  This makes the parser easy to read and write by hand.
+
+- _Suitable for LL($k$) grammars_:
+  LL($k$) grammars are those that can be parsed by an LL($k$) parser,
+  which scans the input from *l*\eft to right and uses *l*\eftmost derivation
+  with at most $k$ lookahead tokens to decide which production rule to apply.
+  The given grammar is an LL($k$) grammar,
+  which makes a recursive descent parser suitable.
+
+Each parse function builds an AST node for its corresponding non-terminal symbol
+by calling the parse functions for lower-level nodes.
+A higher-level parse function uses the node to build its own higher-level node.
+For example, the `parse_job()` function calls `parse_cmd()`
+to build command nodes,
+which become the children of a job node.
+
+The highest level node is a _root_ node.
+While we could have used a command line node as the highest level node type,
+using a separate root node type allows us to represent
+an empty input from the user,
+which would have been invalid for a command line node
+according to the grammar.
+
