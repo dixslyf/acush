@@ -19,9 +19,3 @@ To clean up build artifacts:
 ```
 make clean
 ```
-
-To run unit tests:
-
-```
-make test
-```
