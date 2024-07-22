@@ -191,6 +191,152 @@ Furthermore, the shell must satisfy the following requirements:
 - _Non-termination on `CTRL-C`, `CTRL-\` or `CTRL-Z`_:
   The shell must not be terminated when the user enters `CTRL-C`, `CTRL-\` or `CTRL-Z`.
 
+= Self-Diagnosis and Evaluation
+
+Implemented features:
+
+- The shell implements the `prompt` built-in command.
+  The prompt is set to the second argument of `prompt`.
+  If extraneous or no arguments are provided,
+  an error message is printed to the standard error stream
+  and the shell continues using the current prompt.
+
+- The shell implements the `pwd` built-in command.
+  When executed, the current working directory of the shell is printed
+  to the standard output stream.
+  If extraneous arguments are provided,
+  an error message is printed to the standard error stream
+  and the working directory is left unchanged.
+
+- The shell implements the `cd` built-in command.
+  If no arguments are provided,
+  the working directory is set to the path specified
+  in the `HOME` environment variable.
+  If the `HOME` environment variable is not set,
+  an error message is printed to the standard error stream
+  and the working directory is left unchanged.
+
+  If a single argument is provided,
+  the working directory is set to the path specified by that argument
+  if it is a valid directory path.
+  If the argument is a `-`,
+  the working directory is set to the path specified by `OLDPWD`.
+  The path is then printed to the standard output stream.
+  However, if `OLDPWD` is not set,
+  an error message is printed to the standard error stream
+  and the working directory is left unchanged.
+
+  If the argument is not `-` or a valid directory path,
+  or extraneous arguments are provided,
+  an error message is printed to the standard error stream
+  and the working directory is left unchanged.
+
+  If the working directory is successfully changed,
+  the `OLDPWD` environment variable is set to the
+  working directory before the change,
+  and the `PWD` environment variable is set to the
+  new working directory.
+
+- The shell correctly handles the expansion of wildcard characters
+  relative to the current working directory.
+  Specifically, `?` serves as a wildcard for a single character
+  while `*` serves as a wildcard for any number of characters.
+
+- The shell supports all three forms of redirection:
+  `>` for standard output redirection,
+  `<` for standard input redirection and
+  `2>` for standard error redirection.
+  The corresponding standard stream is redirected to the path
+  represented by the word following `>`, `<` or `2>`.
+  If multiple words are specified after `>`, `<` or `2>`,
+  the shell treats the situation as a parse error
+  and prints an error message to the standard error stream
+  without executing anything.
+  If multiple redirections are specified for the same standard stream
+  (e.g., `ls > out1 > out2`),
+  the shell follows Bash's behaviour,
+  creating each file but only using the rightmost file for the final redirection
+  — the file descriptors for the other files are closed as appropriate.
+
+- The shell supports piping the standard output stream of one command
+  to the standard input stream of another
+  using the `|` symbol.
+  Producer child processes close the file descriptor for the read end of the pipe
+  while consumer child processes close the file descriptor for the write end of the pipe.
+  The shell process only closes both ends of the pipe
+  after both producer and consumer child processes have been spawned.
+
+- The shell supports background job execution using `&` syntax.
+  If a job is executed in the background,
+  the shell does _not_ wait for the job to complete
+  before prompting the user for the next command line.
+  Background child processes are correctly consumed
+  using the `waitpid()` function after they terminate
+  to prevent zombies.
+  Other jobs can be specified after the `&`.
+
+- The shell supports sequential job execution using `;` syntax.
+  The ending `;` can be omitted if the sequential job is the last in the command line.
+  When a sequential job is executed,
+  the shell waits for all child processes of the job
+  to terminate before proceeding with the next job in the command line.
+  Only after all sequential jobs in the command line complete
+  does the shell prompt the user for the next command line.
+
+- The shell supports command history navigation using the `Up` and `Down` arrow keys.
+  If there is no previous command line or the current history item is the first,
+  pressing the `Up` arrow does not do anything.
+  Similarly, if there is no next command line in the history,
+  pressing the `Down` arrow does not do anything.
+  The shell also remembers the new command line that has not yet been
+  added to the command history —
+  this new command line can be navigated to seamlessly
+  as though it was part of the command history.
+  However, the shell only commits the new command line to the history
+  after the user presses `Enter`.
+
+- The shell implements the `history` built-in command.
+  When executed, the command history is printed to the standard output stream
+  as a numbered list starting from `1`.
+  If extraneous arguments are provided,
+  an error message is printed to the standard error stream.
+
+- The shell supports history expansion using `!` syntax.
+  If `!` is followed by an integer,
+  the command in the command history list
+  corresponding to that index is re-executed.
+  The repeated command is appended to the command history list.
+  If the index is out of range,
+  an error message is printed to the standard error stream.
+
+  If `!` is followed by a string,
+  the shell searches the latest command in the command history list
+  prefixed with the string and re-executes it.
+  The repeated command is appended to the command history list.
+  If no matching command could be found,
+  an error message is printed to the standard error stream.
+
+- The shell inherits the environment from its parent process.
+  This can be verified by executing the `env` program to view the environment variables.
+
+- The shell implements the `exit` built-in command.
+  When `exit` is called without any arguments,
+  the shell terminates with an exit code of `0`.
+  If `exit` is called with a single integer argument,
+  the shell terminates with the exit code specified by the argument.
+  If the argument is out of range or not an integer,
+  or extraneous arguments are provided,
+  the shell prints an error message to the standard error stream
+  _without_ terminating.
+
+- The shell does not terminate if the user enters `CTRL-C`, `CTRL-\` or `CTRL-Z`.
+
+- Whitespace is not significant except for delimiting tokens of a command line.
+
+Differences from Bash:
+
+// TODO:
+
 = Solution Discussion
 
 The main loop of the shell program consists of the following stages:
