@@ -477,6 +477,73 @@ Furthermore, recursive descent parsers may not be as efficient as
 other types of parsers (e.g., LR parsers),
 especially if the grammar changes to require more complex lookahead or backtracking.
 
+== Running Commands
+
+The code for running commands can be found in `src/run.h` and `src/run.c`.
+Implementations of built-in commands can be found in `src/builtins.h` and `src/builtins.c`.
+
+Once the AST has been built for a command line input,
+it is passed to the `run_ast()` function.
+To execute the AST, the function traverses it top-down in a pre-order fashion.
+Each AST node type has a corresponding run function that performs the necessary steps to realise and execute the node.
+This includes calling the corresponding run function for its immediate child nodes,
+similar to how the recursive descent parser works.
+For example, `run_job_descs()` creates the necessary pipes for commands in the job (among other tasks)
+before delegating the execution of each individual command
+to the `run_cmd()` function.
+
+The exception is the simple command node type
+--- built-in commands and external commands are handled differently
+even though they are both represented as simple command nodes
+(the parser should not and does not have the responsibility of distinguishing between
+built-in commands and external commands).
+In particular, external commands are always executed in a separate child process
+whereas built-in commands are executed within the shell process
+unless they are part of a background job,
+in which case they execute in a child process.
+This behaviour follows what most shells, such as Bash, seem to do.
+
+An important implication of executing foreground built-ins within the shell process
+is that each function implementing a built-in must accept file descriptors
+for the standard output, input and error streams
+as parameters
+for handling piping and redirection.
+Outputs from and inputs to the built-ins
+through redirected or piped standard streams
+are achieved by directly reading from or writing to the file descriptors
+(e.g., using `dprintf()`).
+The reason for this approach is that it is inappropriate to redirect
+the standard streams for the shell process since outputs from and inputs to the shell
+should be independent of those for built-in commands.
+
+While closing the file descriptor of an unused end of a pipe in a child process is straightforward,
+closing the file descriptors for pipes in the shell process is tricky.
+The shell process does not need to use the pipes;
+however, it must keep their file descriptors open long enough for the child processes to inherit them.
+The approach taken is to only close the file descriptors of a pipe
+after spawning the consumer command
+(i.e., the command on the right of the pipe).
+An alternative is to close the write end after spawning the producer,
+then close the read end after spawning the consumer
+--- the producer would inherit both ends of the pipe,
+but the consumer would only inherit the read end.
+This is an equally valid approach,
+but the former approach was chosen
+due to the lack of symmetry surrounding
+the inheritance of the pipe file descriptors in this second approach.
+
+Child processes spawned as part of the same job
+are placed into the same process group,
+whose group leader is the first process spawned for the job. 
+This is done so that the process group can be set as the
+foreground process group for the terminal
+(using `tcsetpgrp()`)
+to allow them to receive signals.
+For example, the user can enter `CTRL-C` to
+send the `SIGINT` signal to each process
+in the job to cancel them
+— a feature provided by most shells.
+
 = Source Code Listing
 
 #figure(
