@@ -169,7 +169,7 @@ Furthermore, the shell must satisfy the following requirements:
 
 - `history` _built-in command_:
   The shell must provide a built-in command, `history`,
-  to display the command historyas a numbered list.
+  to display the command history as a numbered list.
 
 - _History expansion_:
   The shell must support history expansion using `!` syntax.
