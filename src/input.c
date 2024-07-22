@@ -173,6 +173,8 @@ ssize_t read_input(
         if (should_request_cursor_update) {
             request_cursor_pos();
         }
+
+        fflush(stdout);
     }
 
     // We only reach this point if the user enters a newline.
