@@ -218,11 +218,21 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
     bool should_pwd = false;
     if (argc == 2 && strcmp(argv[1], "-") == 0) {
         dir = getenv("OLDPWD");
+        if (dir == NULL) {
+            free(oldpwd);
+            dprintf(fds.stderr, "cd: OLDPWD is not set\n");
+            return SH_CD_OLDPWD_NOT_SET;
+        }
         should_pwd = true;
     } else if (argc == 2) {
         dir = argv[1];
     } else {
         dir = getenv("HOME");
+        if (dir == NULL) {
+            free(oldpwd);
+            dprintf(fds.stderr, "cd: HOME is not set\n");
+            return SH_CD_HOME_NOT_SET;
+        }
     }
 
     if (chdir(dir) < 0) {

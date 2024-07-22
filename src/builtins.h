@@ -154,6 +154,8 @@ enum sh_cd_result {
     SH_CD_UNEXPECTED_ARG_COUNT, /**< Unexpected number of arguments */
     SH_CD_MEMORY_ERROR,         /**< Memory error */
     SH_CD_GENERIC_ERROR,        /**< Generic error */
+    SH_CD_OLDPWD_NOT_SET, /**< The `OLDPWD` environment variable is not set. */
+    SH_CD_HOME_NOT_SET,   /**< The `HOME` environment variable is not set. */
 };
 
 /**
