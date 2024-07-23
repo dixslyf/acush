@@ -12,51 +12,114 @@
 #include "run.h"
 #include "shell.h"
 
+/**
+ * A descriptor for piping, indicating the file descriptors for the ends of
+ * pipes.
+ */
 struct sh_pipe_desc {
+    /** Whether the command's standard input should be redirected to the read
+     * end of a pipe. */
     bool redirect_stdin;
     union {
         struct {
-            int read_fd_left;
-            int write_fd_left;
+            int read_fd_left;  /**< File descriptor for the read end of the pipe
+                                  for standard input redirection (used by the
+                                  consumer process). */
+            int write_fd_left; /**< File descriptor for the write end of the
+                                  pipe for standard input redirection (used by
+                                  the producer process). */
         };
     };
 
+    /** Whether the command's standard output should be redirected to the write
+     * end of a pipe. */
     bool redirect_stdout;
     union {
         struct {
-            int read_fd_right;
-            int write_fd_right;
+            int read_fd_right; /**< File descriptor for the read end of the pipe
+                                  for standard output redirection (used by the
+                                  consumer process). */
+            int write_fd_right; /**< File descriptor for the write end of the
+                                  pipe for standard output redirection (used by
+                                  the producer process). */
         };
     };
 };
 
+/** A descriptor for spawning a command. */
 struct sh_spawn_desc {
+    /** The number of redirection descriptors. */
     size_t redirection_count;
+
+    /** An array of redirection descriptors for the spawned command. */
     struct sh_redirection_desc *redirections;
 
-    size_t argc;
-    char const *const *argv;
+    size_t argc;             /**< The number of arguments. */
+    char const *const *argv; /**< An array of argument strings. */
 
+    /** Describes piping for the spawned command. */
     struct sh_pipe_desc pipe_desc;
 };
 
+/**
+ * Runs an abstract syntax tree (AST).
+ *
+ * This function runs the command line represented by the given AST.
+ *
+ * @param ctx a pointer to the shell context
+ * @param root a pointer to the root of the AST
+ * @param line the original command line string
+ */
 void run_ast(
     struct sh_shell_context *ctx,
     struct sh_ast_root const *root,
     char const *line
 );
 
+/**
+ * Runs a command line AST node.
+ *
+ * This function handles command repetition and job execution.
+ *
+ * @param ctx a pointer to the shell context
+ * @param cmd_line a pointer to the command line AST node
+ * @param line the original command line string
+ */
 void run_cmd_line(
     struct sh_shell_context *ctx,
     struct sh_ast_cmd_line const *cmd_line,
     char const *line
 );
 
+/**
+ * Runs a job described by the given job descriptor.
+ *
+ * This function handles job execution, including managing process groups
+ * and piping between commands.
+ *
+ * @param ctx a pointer to the shell context
+ * @param job_desc a pointer to the job descriptor
+ */
 void run_job_desc(
     struct sh_shell_context *ctx,
     struct sh_job_desc const *job_desc
 );
 
+/**
+ * Runs a command AST node.
+ *
+ * This function handles command execution, including managing built-in commands
+ * and creating child processes for external commands.
+ *
+ * @param ctx a pointer to the shell context
+ * @param cmd a pointer to the command AST node
+ * @param pgid the process group ID of the job
+ * @param job_type the type of job (foreground or background)
+ * @param pipe_desc a descriptor for handling piping between commands
+ *
+ * @return the PID of the spawned process, or 0 if the command is a foreground
+ * builtin
+ */
 pid_t run_cmd(
     struct sh_shell_context *ctx,
     struct sh_ast_cmd const *cmd,
@@ -65,8 +128,29 @@ pid_t run_cmd(
     struct sh_pipe_desc pipe_desc
 );
 
+/**
+ * Runs a built-in command in the foreground.
+ *
+ * This function handles redirections and piping for built-in commands
+ * that are executed in the foreground.
+ *
+ * @param ctx a pointer to the shell context
+ * @param desc a descriptor for spawning the command
+ * @return 0 on success
+ */
 int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc);
 
+/**
+ * Spawns a new process for the given spawn descriptor.
+ *
+ * This function handles the creation of child processes, setting up
+ * redirections, and running built-in or external commands.
+ *
+ * @param ctx a pointer to the shell context
+ * @param pgid the process group ID for the new process
+ * @param desc a descriptor containing details for spawning the command
+ * @return the PID of the spawned process, or -1 if an error occurred
+ */
 pid_t spawn(
     struct sh_shell_context *ctx,
     pid_t pgid,

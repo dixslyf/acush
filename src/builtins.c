@@ -10,11 +10,25 @@
 #include "builtins.h"
 #include "shell.h"
 
+/** Represents the result of `allocating_getcwd()`. */
 enum sh_getcwd_error {
     SH_GETCWD_SUCCESS = 0,
     SH_GETCWD_MEMORY_ERROR,
     SH_GETCWD_GENERIC_ERROR
 };
+
+/**
+ * Like `getcwd()`, but dynamically allocates memory for the current working
+ * directory path.
+ *
+ * The current working directory path is written to `out`, and must be freed
+ * when no longer needed.
+ *
+ * @param out a pointer to which the current working directory path should be
+ * written
+ *
+ * @return the result of getting the current working directory
+ */
 enum sh_getcwd_error allocating_getcwd(char **out);
 
 bool is_builtin(char const *name) {

@@ -24,6 +24,7 @@
 
 #define DSR_POS "6n"
 
+/** Contains textual information for user input. */
 struct sh_input_context {
     size_t cursor_line; /**< The line the cursor is on. */
     size_t cursor_col;  /**< The column the cursor is on. */
@@ -42,33 +43,122 @@ struct sh_input_context {
     size_t new_cmdline_len; /**< Number of characters in the new commandline
                                buffer (excluding the null byte). */
 
-    struct sh_shell_context const *sh_ctx;
-    size_t history_idx;
+    struct sh_shell_context const *sh_ctx; /**< Pointer to the shell context. */
+    size_t history_idx; /**< The index of the currently selected command history
+                           item. */
 };
 
+/**
+ * Initializes the input context.
+ *
+ * @param input_ctx a pointer to the input context to initialize
+ * @param sh_ctx a pointer to the shell context
+ */
 void init_input_context(
     struct sh_input_context *input_ctx,
     struct sh_shell_context const *sh_ctx
 );
 
+/**
+ * Handles backspace input.
+ *
+ * This function handles the backspace key, modifying the input buffer and
+ * updating the cursor position.
+ *
+ * @param input_ctx a pointer to the input context
+ */
 void handle_backspace(struct sh_input_context *input_ctx);
 
+/**
+ * Handles CSI (Control Sequence Introducer) sequences.
+ *
+ * This function handles various CSI sequences for terminal control.
+ *
+ * @param input_ctx a pointer to the input context
+ * @return the character indicating the type of CSI sequence, or '\0' if not
+ * recognized
+ */
 char handle_csi(struct sh_input_context *input_ctx);
 
+/**
+ * Handles the "up" arrow key.
+ *
+ * This function moves up through the command history.
+ *
+ * @param input_ctx a pointer to the input context
+ * @return true if successful, false otherwise
+ */
 bool handle_up(struct sh_input_context *input_ctx);
 
+/**
+ * Handles the "down" arrow key.
+ *
+ * This function moves down through the command history.
+ *
+ * @param input_ctx a pointer to the input context
+ */
 void handle_down(struct sh_input_context *input_ctx);
 
+/**
+ * Handles CSI CPR (Cursor Position Report) sequences.
+ *
+ * This function parses the CPR response and updates the cursor position
+ * in the input context.
+ *
+ * @param input_ctx a pointer to the input context
+ * @param bytes the CPR response bytes
+ * @return true if successful, false otherwise
+ */
 bool handle_cpr(struct sh_input_context *input_ctx, char const *bytes);
 
+/**
+ * Inserts a character into the input buffer.
+ *
+ * This function inserts a character at the current cursor position and updates
+ * the display.
+ *
+ * @param input_ctx a pointer to the input context
+ * @param c the character to insert
+ */
 void insert_char(struct sh_input_context *input_ctx, char c);
 
+/**
+ * Updates the window size.
+ *
+ * This function retrieves and updates the terminal window size.
+ *
+ * @param input_ctx a pointer to the input context
+ * @return true if successful, false otherwise
+ */
 bool update_win_size(struct sh_input_context *input_ctx);
 
+/**
+ * Requests the current cursor position.
+ *
+ * This function sends a request to the terminal to report the current cursor
+ * position.
+ *
+ * @return true if successful, false otherwise
+ */
 bool request_cursor_pos();
 
+/**
+ * Terminates input.
+ *
+ * This function terminates the current input session and finalizes the input
+ * buffer.
+ *
+ * @param input_ctx a pointer to the input context
+ */
 void terminate_input(struct sh_input_context *input_ctx);
 
+/**
+ * Destroys the input context.
+ *
+ * This function frees all resources associated with the input context.
+ *
+ * @param input_ctx a pointer to the input context
+ */
 void destroy_input_context(struct sh_input_context *input_ctx);
 
 bool enable_raw_mode(struct termios *orig_termios) {

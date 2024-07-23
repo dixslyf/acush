@@ -1,3 +1,8 @@
+/**
+ * @file parse.h
+ * Declarations for parsing a sequence of tokens.
+ */
+
 #ifndef PARSE_H
 #define PARSE_H
 
