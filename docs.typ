@@ -694,6 +694,380 @@ send the `SIGINT` signal to each process
 in the job to cancel them
 — a feature provided by most shells.
 
+= Test Evidence
+
+#let test-counter = counter("test-counter")
+#let test-case(text) = [
+  #test-counter.step()
+  *Test case #test-counter.display("1:")* #text
+]
+
+== Single Foreground Job with a Single External Program
+
+This section tests basic test cases, namely those that only execute a single foreground job with a single external program.
+
+#test-case[External program without arguments.]
+
+This test case tests the most simple use case of the shell
+— calling external programs without any arguments.
+
+`echo`
+
+`ls`
+
+`ps`
+
+#test-case[External program with a small number of arguments.]
+
+Similar to the previous case, but with a small number of arguments.
+
+`echo the quick brown fox`
+
+`ls -l -t`
+
+`ps -e`
+
+#test-case[Long-running external program.]
+
+This test case tests that the shell waits for the child process to terminate before prompting for the next command line.
+
+`sleep 3`
+
+#test-case[Graphical external program.]
+
+This test case tests that the shell can spawn graphical applications
+and waits for the application to exit before prompting for the next command line.
+
+`firefox`
+
+== Single Foreground Job with a Single Built-in Command
+
+=== `prompt`
+
+#test-case[`prompt` with a single argument.]
+
+`prompt` with a single argument should set the prompt to the argument.
+
+```
+prompt $
+
+prompt "john doe:"
+```
+
+#test-case[`prompt` without arguments.]
+
+`prompt` without arguments should print an error message to standard error without changing the prompt.
+
+```
+prompt
+```
+
+#test-case[`prompt` with two or more arguments.]
+
+`prompt` with two or more arguments should print an error message to standard error without changing the prompt.
+
+```
+prompt hello world
+```
+
+=== `cd` and `pwd`
+
+#test-case[`cd` without any arguments and `pwd`.]
+
+`cd` without any arguments should change the working directory to the user's home directory
+and set the `OLDPWD` and `PWD` environment variables.
+`pwd` should show the home directory.
+
+```
+cd
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with a valid relative path and `pwd`.]
+
+`cd` with a valid relative path argument should change the current working directory to that path
+and set the `OLDPWD` and `PWD` environment variables.
+`pwd` should show the absolute path of the directory.
+
+From the home directory:
+```
+cd Documents
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with a valid absolute path and `pwd`.]
+
+`cd` with a valid absolute path argument should change the current working directory to that path
+and set the `OLDPWD` and `PWD` environment variables.
+`pwd` should show the absolute path of the directory.
+
+```
+cd /
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd /etc
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with `-` and `pwd`.]
+
+"`cd -`" should change the current working directory to the previous working directory
+and set the `OLDPWD` and `PWD` environment variables.
+`pwd` should show the absolute path of the directory.
+
+```
+cd /
+pwd
+
+cd -
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with two or more arguments.]
+
+`cd` with two or more arguments should print an error message
+to standard error without changing the working directory
+or modifying the `OLDPWD` and `PWD` environment variables.
+
+```
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd hello world
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd the quick brown fox jumps over the lazy dog
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with a non-existent relative path.]
+
+`cd` with a non-existent relative path should print an error message to standard error
+without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
+
+```
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd blahblahblah
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with a non-existent absolute path.]
+
+`cd` with a non-existent absolute path should print an error message to standard error
+without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
+
+```
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd /blah/blah/blah
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` without any arguments but with an unset `HOME` environment variable.]
+
+`cd` without any arguments but with an unset `HOME` environment variable
+should print an error message to standard error
+without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
+
+Start the shell with `env -i build/shell`:
+```
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+#test-case[`cd` with `-` but with an unset `OLDPWD` environment variable.]
+
+"`cd -`" with an unset `OLDPWD` environment variable
+should print an error message to standard error
+without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
+
+Start the shell with `env -i build/shell`:
+```
+pwd
+env | grep OLDPWD
+env | grep PWD
+
+cd -
+pwd
+env | grep OLDPWD
+env | grep PWD
+```
+
+== Single Foreground Job with a Single Command for Testing Shell Features
+
+=== Wildcard Expansion
+
+#test-case[Expansion of `*` alone when there are files in the current working directory.]
+
+`*` should be expanded to all files in the current working directory.
+
+```
+echo *
+```
+
+#test-case[Expansion of `*` in combination with other text when there are matching files in the current working directory.]
+
+```
+touch foobar
+touch test1.c
+touch test2.c
+
+echo foo*
+echo *.c
+```
+
+#test-case[Expansion of multiple `*`s in combination with other text when there are matching files in the current working directory.]
+
+```
+touch foobar
+touch test1.c
+touch test2.c
+
+echo *oo*r
+echo *.*
+```
+
+#test-case[Expansion of `*` across directories.]
+
+```
+echo /*
+echo /ho*/*/*
+```
+
+#test-case[Expansion of `*` with no matching text.]
+
+When there is no matching text,
+the token should be taken literally.
+
+```
+echo *doesnotexist
+echo *does*not*exist*
+```
+
+#test-case[Expansion of `?` when there are matching files in the current working directory.]
+
+```
+touch foobar
+echo ?oobar
+echo ???bar
+echo foo???
+echo ??????
+rm foobar
+```
+
+#test-case[Expansion of `?` with no matching files.]
+
+When there is no matching text, the token should be taken literally.
+
+```
+echo doesn?texist
+echo ?oesn?texis?
+```
+
+=== Redirections
+
+#test-case[Redirecting standard output]
+
+```
+echo "hello world" > hello
+cat hello
+```
+
+#test-case[Redirecting standard input]
+
+```
+echo "hello world" > hello
+cat < hello
+```
+
+#test-case[Redirecting standard error]
+
+```
+ls /nonexistent 2> error.log
+cat error.log
+```
+
+#test-case[Redirecting all standard streams]
+
+```
+echo hello > out 2> err < in
+cat out
+cat err
+```
+
+#test-case[Repeated redirections]
+
+When redirections for the same standard stream is specified more than once,
+the last (rightmost) redirection takes priority.
+In the case of redirecting standard output and standard error,
+all files are still created.
+
+```
+echo hello > out1 > out2 > out3
+
+ls /nonexistent 2> error1 2> error2 2> error3
+
+cat < out1 < out2 < out3
+```
+
+#test-case[Missing redirection file]
+
+These commands should result in a parse error
+without any commands executed.
+
+```
+echo hello >
+cat <
+ls /nonexistent 2>
+```
+
+=== Pipelines
+
+#test-case[Pipeline with one pipe]
+
+```
+echo hello | grep "h"
+```
+
+#test-case[Pipeline with multiple pipes]
+
+```
+echo hello world > test
+cat test | grep world | wc -l
+```
+
+The test should print `1` on success as there is only one line.
+
 = Source Code Listing
 
 #figure(
