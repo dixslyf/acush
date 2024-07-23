@@ -331,6 +331,9 @@ Implemented features:
 
 - The shell does not terminate if the user enters `CTRL-C`, `CTRL-\` or `CTRL-Z`.
 
+- Slow system calls (e.g., `read`) are immediately restarted
+  when a child process exits and sends a `SIGCHLD` signal to the shell process.
+
 - Whitespace is not significant except for delimiting tokens of a command line.
 
 Differences from Bash:
