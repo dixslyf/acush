@@ -702,9 +702,9 @@ in the job to cancel them
   *Test case #test-counter.display("1:")* #text
 ]
 
-#let test-case-image(path, width: 100%) = figure(
-  caption: [Test case #test-counter.display("1")],
-  image("/docs/graphics/" + path, width: width),
+#let test-case-image(path, width: 75%) = align(
+  center,
+  image("/docs/graphics/" + path, width: width)
 )
 
 == External Programs
