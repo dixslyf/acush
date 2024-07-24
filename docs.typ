@@ -875,6 +875,144 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-dash-no-oldpwd.png")
 
+=== Command History
+
+#test-case[Upwards history navigation when there is no previous command]
+
+When the shell is first started without entering any commands,
+pressing the `Up` arrow should not do anything
+since there is no previous command.
+Similarly, if there were previous commands,
+but we have navigated to the first command,
+pressing `Up` should not do anything.
+
+```
+Start the shell
+Press the Up arrow and take screenshot (should be no change)
+```
+
+```
+echo hello
+ls
+ps
+(up arrow)
+(up arrow)
+(up arrow)
+(up arrow, take screenshot, should be at echo hello)
+```
+
+#test-case[Upwards history navigation when commands have been entered before]
+
+```
+echo hello
+ls
+ps
+(press up arrow and take screenshot)
+(press up arrow and take screenshot)
+(press up arrow and take screenshot)
+```
+
+(3 screenshots in total)
+
+
+#test-case[Downwards history navigation when at the latest new command]
+
+When the currently selected history item is the latest (new command line),
+pressing the `Down` arrow should not do anything
+since there is no next command.
+
+```
+echo hello
+ls
+ps
+Then press the Down arrow and take screenshot (should be no change)
+```
+
+#test-case[Downwards history navigation when there are next commands]
+
+```
+echo hello
+ls
+ps
+(press up arrow)
+(press up arrow)
+(press up arrow)
+(take screenshot, should be at echo hello)
+(press down arrow and take screenshot)
+(press down arrow and take screenshot)
+(press down arrow and take screenshot, should be blank command line)
+```
+
+(4 screenshots in total)
+
+#test-case[`history` without arguments]
+
+The `history` built-in without arguments should show the command history as a numbered list.
+The `history` command itself should be in the command history.
+
+```
+echo hello
+ls
+ps
+history
+```
+
+#test-case[`history` with arguments]
+
+Calling the `history` built-in with arguments should print an error message to the standard error stream.
+
+```
+history hello
+history hello world
+```
+
+#test-case[`!` with a valid index]
+
+```
+echo hello
+ls
+ps
+history
+!1
+!2
+!3
+```
+
+#test-case[`!` with an invalid index]
+
+```
+echo hello
+ls
+ps
+history
+!0
+!100
+```
+
+#test-case[`!` with a matching string]
+
+```
+echo hello
+ls
+ps
+history
+!ec
+!l
+!p
+!histo
+```
+
+#test-case[`!` with a non-matching string]
+
+```
+echo hello
+ls
+ps
+history
+!hello
+!f
+```
+
 == Single Foreground Job with a Single Command for Testing Shell Features
 
 === Wildcard Expansion
