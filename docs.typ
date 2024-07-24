@@ -684,7 +684,7 @@ the inheritance of the pipe file descriptors in this second approach.
 
 Child processes spawned as part of the same job
 are placed into the same process group,
-whose group leader is the first process spawned for the job. 
+whose group leader is the first process spawned for the job.
 This is done so that the process group can be set as the
 foreground process group for the terminal
 (using `tcsetpgrp()`)
@@ -707,11 +707,9 @@ in the job to cancel them
   image("/docs/graphics/" + path, width: width),
 )
 
-== Single Foreground Job with a Single External Program
+== External Programs
 
-This section tests basic test cases, namely those that only execute a single foreground job with a single external program.
-
-#test-case[External program without arguments.]
+#test-case[External program without arguments]
 
 This test case tests the most simple use case of the shell
 — calling external programs without any arguments.
@@ -720,7 +718,7 @@ This test case tests the most simple use case of the shell
 
 Indeed, the shell executes `echo`, `ls` and `ps` without issue.
 
-#test-case[External program with a small number of arguments.]
+#test-case[External program with a small number of arguments]
 
 Similar to the previous case, but with a small number of arguments.
 
@@ -728,7 +726,7 @@ Similar to the previous case, but with a small number of arguments.
 
 The shell correctly passes the arguments to and executes the external programs.
 
-#test-case[Long-running external program.]
+#test-case[Long-running external program]
 
 This test case tests that the shell waits for the child process to terminate before prompting for the next command line.
 
@@ -739,7 +737,7 @@ but the shell correctly waits for `sleep 3` to terminate
 before it prompts the user for the next command.
 In the screenshot, we can see that the shell is waiting for `sleep 5` to terminate.
 
-#test-case[Graphical external program.]
+#test-case[Graphical external program]
 
 This test case tests that the shell can spawn graphical applications
 and waits for the application to exit before prompting for the next command line.
@@ -751,11 +749,11 @@ We also see that the shell does not prompt the user for the next command yet
 as Firefox has not terminated.
 Note that the warnings and errors are from Firefox, not from the shell.
 
-== Single Foreground Job with a Single Built-in Command
+== Built-in Commands
 
 === `prompt`
 
-#test-case[`prompt` with a single argument.]
+#test-case[`prompt` with a single argument]
 
 `prompt` with a single argument should set the prompt to the argument.
 
@@ -764,7 +762,7 @@ Note that the warnings and errors are from Firefox, not from the shell.
 We change the prompt twice, first to `$` and then to `"john doe:"`.
 The screenshot shows that the prompt is indeed changed according to the given argument.
 
-#test-case[`prompt` without arguments.]
+#test-case[`prompt` without arguments]
 
 `prompt` without arguments should print an error message to standard error.
 
@@ -772,7 +770,7 @@ The screenshot shows that the prompt is indeed changed according to the given ar
 
 Indeed, when no arguments are given, an error message is printed.
 
-#test-case[`prompt` with two or more arguments.]
+#test-case[`prompt` with two or more arguments]
 
 `prompt` with two or more arguments should print an error message to standard error without changing the prompt.
 
@@ -784,7 +782,7 @@ Indeed, when two or more arguments are given, an error message is printed.
 
 // TODO: don't need `grep OLDPWD`
 
-#test-case[`cd` without any arguments and `pwd`.]
+#test-case[`cd` without any arguments and `pwd`]
 
 `cd` without any arguments should change the working directory to the user's home directory
 and set the `OLDPWD` and `PWD` environment variables.
@@ -792,7 +790,7 @@ and set the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-without-arguments.png")
 
-#test-case[`cd` with a valid relative path and `pwd`.]
+#test-case[`cd` with a valid relative path and `pwd`]
 
 `cd` with a valid relative path argument should change the current working directory to that path
 and set the `OLDPWD` and `PWD` environment variables.
@@ -802,7 +800,7 @@ From the home directory:
 
 #test-case-image("cd-relative-path.png")
 
-#test-case[`cd` with a valid absolute path and `pwd`.]
+#test-case[`cd` with a valid absolute path and `pwd`]
 
 `cd` with a valid absolute path argument should change the current working directory to that path
 and set the `OLDPWD` and `PWD` environment variables.
@@ -810,7 +808,7 @@ and set the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-absolute-path.png")
 
-#test-case[`cd` with `-` and `pwd`.]
+#test-case[`cd` with `-` and `pwd`]
 
 "`cd -`" should change the current working directory to the previous working directory
 and set the `OLDPWD` and `PWD` environment variables.
@@ -820,7 +818,7 @@ and set the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-dash.png")
 
-#test-case[`cd` with two or more arguments.]
+#test-case[`cd` with two or more arguments]
 
 `cd` with two or more arguments should print an error message
 to standard error without changing the working directory
@@ -844,14 +842,14 @@ while `PWD` should be set to the parent working directory.
 
 #test-case-image("cd-dot-dot.png")
 
-#test-case[`cd` with a non-existent relative path.]
+#test-case[`cd` with a non-existent relative path]
 
 `cd` with a non-existent relative path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-invalid-relative-path.png")
 
-#test-case[`cd` with a non-existent absolute path.]
+#test-case[`cd` with a non-existent absolute path]
 
 `cd` with a non-existent absolute path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
@@ -859,7 +857,7 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 // FIXME: path is not an absolute path
 #test-case-image("cd-invalid-absolute-path.png")
 
-#test-case[`cd` without any arguments but with an unset `HOME` environment variable.]
+#test-case[`cd` without any arguments but with an unset `HOME` environment variable]
 
 `cd` without any arguments but with an unset `HOME` environment variable
 should print an error message to standard error
@@ -867,7 +865,7 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-without-arguments-no-home.png")
 
-#test-case[`cd` with `-` but with an unset `OLDPWD` environment variable.]
+#test-case[`cd` with `-` but with an unset `OLDPWD` environment variable]
 
 "`cd -`" with an unset `OLDPWD` environment variable
 should print an error message to standard error
@@ -875,7 +873,26 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-dash-no-oldpwd.png")
 
-=== Command History
+=== `history`
+
+#test-case[`history` without arguments when there are previous commands]
+
+The `history` built-in without arguments should show the command history as a numbered list.
+The `history` command itself should be in the command history.
+
+First, we populate the command history with `echo hello`, `ls` and `ps`.
+Then, we execute `history`:
+#test-case-image("history-without-arguments.png")
+
+Indeed, the commands executed appear in the history in their order of execution.
+
+#test-case[`history` with arguments]
+
+Calling the `history` built-in with arguments should print an error message to the standard error stream.
+
+#test-case-image("history-with-arguments.png")
+
+== History Navigation
 
 #test-case[Upwards history navigation when there is no previous command]
 
@@ -951,23 +968,6 @@ Pressing the `Down` arrow for the second time:
 Pressing the `Down` arrow for the third time:
 #test-case-image("history-navigation-down-with-next-d.png")
 
-#test-case[`history` without arguments]
-
-The `history` built-in without arguments should show the command history as a numbered list.
-The `history` command itself should be in the command history.
-
-First, we populate the command history with `echo hello`, `ls` and `ps`.
-Then, we execute `history`:
-#test-case-image("history-without-arguments.png")
-
-Indeed, the commands executed appear in the history in their order of execution.
-
-#test-case[`history` with arguments]
-
-Calling the `history` built-in with arguments should print an error message to the standard error stream.
-
-#test-case-image("history-with-arguments.png")
-
 #test-case[`!` with a valid index]
 
 When using `!` with a valid index,
@@ -1023,46 +1023,44 @@ Then, we enter `!hello` and `!f` as examples of non-matching prefixes:
 
 The shell correctly prints an error message to the standard error stream.
 
-== Single Foreground Job with a Single Command for Testing Shell Features
+== Wildcard Expansion
 
-=== Wildcard Expansion
-
-#test-case[Expansion of `*` alone when there are files in the current working directory.]
+#test-case[Expansion of `*` alone when there are files in the current working directory]
 
 `*` should be expanded to all files in the current working directory.
 
 #test-case-image("wildcard-asterisk-alone.png")
 
-#test-case[Expansion of `*` in combination with other text when there are matching files in the current working directory.]
+#test-case[Expansion of `*` in combination with other text when there are matching files in the current working directory]
 
 #test-case-image("wildcard-asterisk-mixed.png")
 
-#test-case[Expansion of multiple `*`s in combination with other text when there are matching files in the current working directory.]
+#test-case[Expansion of multiple `*`s in combination with other text when there are matching files in the current working directory]
 
 #test-case-image("wildcard-asterisk-multi.png")
 
-#test-case[Expansion of `*` across directories.]
+#test-case[Expansion of `*` across directories]
 
 #test-case-image("wildcard-asterisk-across-directories.png")
 
-#test-case[Expansion of `*` with no matching text.]
+#test-case[Expansion of `*` with no matching text]
 
 When there is no matching text,
 the token should be taken literally.
 
 #test-case-image("wildcard-asterisk-no-match.png")
 
-#test-case[Expansion of `?` when there are matching files in the current working directory.]
+#test-case[Expansion of `?` when there are matching files in the current working directory]
 
 #test-case-image("wildcard-question.png")
 
-#test-case[Expansion of `?` with no matching files.]
+#test-case[Expansion of `?` with no matching files]
 
 When there is no matching text, the token should be taken literally.
 
 #test-case-image("wildcard-question-no-match.png")
 
-=== Redirections
+== Redirections
 
 #test-case[Redirecting standard output]
 
@@ -1097,7 +1095,7 @@ without any commands executed.
 // FIXME: this is bugged
 #test-case-image("redirect-missing-file.png")
 
-=== Pipelines
+== Pipelines
 
 #test-case[Pipeline with one pipe]
 
