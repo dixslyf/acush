@@ -702,6 +702,11 @@ in the job to cancel them
   *Test case #test-counter.display("1:")* #text
 ]
 
+#let test-case-image(path, width: 100%) = figure(
+  caption: [Test case #test-counter.display("1")],
+  image("/docs/graphics/" + path, width: width),
+)
+
 == Single Foreground Job with a Single External Program
 
 This section tests basic test cases, namely those that only execute a single foreground job with a single external program.
@@ -711,34 +716,40 @@ This section tests basic test cases, namely those that only execute a single for
 This test case tests the most simple use case of the shell
 — calling external programs without any arguments.
 
-`echo`
+#test-case-image("external-program-without-arguments.png")
 
-`ls`
-
-`ps`
+Indeed, the shell executes `echo`, `ls` and `ps` without issue.
 
 #test-case[External program with a small number of arguments.]
 
 Similar to the previous case, but with a small number of arguments.
 
-`echo the quick brown fox`
+#test-case-image("external-program-small-number-of-arguments.png")
 
-`ls -l -t`
-
-`ps -e`
+The shell correctly passes the arguments to and executes the external programs.
 
 #test-case[Long-running external program.]
 
 This test case tests that the shell waits for the child process to terminate before prompting for the next command line.
 
-`sleep 3`
+#test-case-image("long-running-external-program.png")
+
+It is difficult to demonstrate with an image,
+but the shell correctly waits for `sleep 3` to terminate
+before it prompts the user for the next command.
+In the screenshot, we can see that the shell is waiting for `sleep 5` to terminate.
 
 #test-case[Graphical external program.]
 
 This test case tests that the shell can spawn graphical applications
 and waits for the application to exit before prompting for the next command line.
 
-`firefox`
+#test-case-image("graphical-external-program.png")
+
+The shell correctly spawns the Firefox web browser.
+We also see that the shell does not prompt the user for the next command yet
+as Firefox has not terminated.
+Note that the warnings and errors are from Firefox, not from the shell.
 
 == Single Foreground Job with a Single Built-in Command
 
@@ -748,29 +759,30 @@ and waits for the application to exit before prompting for the next command line
 
 `prompt` with a single argument should set the prompt to the argument.
 
-```
-prompt $
+#test-case-image("prompt-single-argument.png")
 
-prompt "john doe:"
-```
+We change the prompt twice, first to `$` and then to `"john doe:"`.
+The screenshot shows that the prompt is indeed changed according to the given argument.
 
 #test-case[`prompt` without arguments.]
 
-`prompt` without arguments should print an error message to standard error without changing the prompt.
+`prompt` without arguments should print an error message to standard error.
 
-```
-prompt
-```
+#test-case-image("prompt-without-arguments.png")
+
+Indeed, when no arguments are given, an error message is printed.
 
 #test-case[`prompt` with two or more arguments.]
 
 `prompt` with two or more arguments should print an error message to standard error without changing the prompt.
 
-```
-prompt hello world
-```
+#test-case-image("prompt-two-or-more-arguments.png")
+
+Indeed, when two or more arguments are given, an error message is printed.
 
 === `cd` and `pwd`
+
+// TODO: don't need `grep OLDPWD`
 
 #test-case[`cd` without any arguments and `pwd`.]
 
@@ -778,12 +790,7 @@ prompt hello world
 and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the home directory.
 
-```
-cd
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+#test-case-image("cd-without-arguments.png")
 
 #test-case[`cd` with a valid relative path and `pwd`.]
 
@@ -792,12 +799,8 @@ and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the absolute path of the directory.
 
 From the home directory:
-```
-cd Documents
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+
+#test-case-image("cd-relative-path.png")
 
 #test-case[`cd` with a valid absolute path and `pwd`.]
 
@@ -805,17 +808,7 @@ env | grep PWD
 and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the absolute path of the directory.
 
-```
-cd /
-pwd
-env | grep OLDPWD
-env | grep PWD
-
-cd /etc
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+#test-case-image("cd-absolute-path.png")
 
 #test-case[`cd` with `-` and `pwd`.]
 
@@ -823,15 +816,9 @@ env | grep PWD
 and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the absolute path of the directory.
 
-```
-cd /
-pwd
+// TODO: should pwd first to show the current directory before changing
 
-cd -
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+#test-case-image("cd-dash.png")
 
 #test-case[`cd` with two or more arguments.]
 
@@ -839,53 +826,38 @@ env | grep PWD
 to standard error without changing the working directory
 or modifying the `OLDPWD` and `PWD` environment variables.
 
-```
-pwd
-env | grep OLDPWD
-env | grep PWD
+#test-case-image("cd-two-or-more-arguments.png")
 
-cd hello world
-pwd
-env | grep OLDPWD
-env | grep PWD
+#test-case[`cd .`]
 
-cd the quick brown fox jumps over the lazy dog
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+`cd .` should change the working directory to the current directory~(i.e., the current directory does not change).
+The `OLDPWD` and `PWD` environment variables should be set to the current working directory.
+
+// FIXME: should print the current working directory first
+#test-case-image("cd-dot.png")
+
+#test-case[`cd ..`]
+
+`cd ..` should change the working directory to the parent directory.
+The `OLDPWD` environment variable should be set to the original current working directory
+while `PWD` should be set to the parent working directory.
+
+#test-case-image("cd-dot-dot.png")
 
 #test-case[`cd` with a non-existent relative path.]
 
 `cd` with a non-existent relative path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-```
-pwd
-env | grep OLDPWD
-env | grep PWD
-
-cd blahblahblah
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+#test-case-image("cd-invalid-relative-path.png")
 
 #test-case[`cd` with a non-existent absolute path.]
 
 `cd` with a non-existent absolute path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-```
-pwd
-env | grep OLDPWD
-env | grep PWD
-
-cd /blah/blah/blah
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+// FIXME: path is not an absolute path
+#test-case-image("cd-invalid-absolute-path.png")
 
 #test-case[`cd` without any arguments but with an unset `HOME` environment variable.]
 
@@ -893,17 +865,7 @@ env | grep PWD
 should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-Start the shell with `env -i build/shell`:
-```
-pwd
-env | grep OLDPWD
-env | grep PWD
-
-cd
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+#test-case-image("cd-without-arguments-no-home.png")
 
 #test-case[`cd` with `-` but with an unset `OLDPWD` environment variable.]
 
@@ -911,17 +873,7 @@ env | grep PWD
 should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-Start the shell with `env -i build/shell`:
-```
-pwd
-env | grep OLDPWD
-env | grep PWD
-
-cd -
-pwd
-env | grep OLDPWD
-env | grep PWD
-```
+#test-case-image("cd-dash-no-oldpwd.png")
 
 == Single Foreground Job with a Single Command for Testing Shell Features
 
