@@ -1158,6 +1158,73 @@ cat test | grep world | wc -l
 
 The test should print `1` on success as there is only one line.
 
+== Job Execution
+
+This section tests background and sequential jobs.
+
+#test-case[Single background job]
+
+Running a command in the background using `&` should
+run the command in the background.
+The shell should prompt the user for the next command immediately
+without waiting for the executed command to terminate.
+
+```
+sleep 10 &
+ps
+```
+
+#test-case[Multiple background jobs]
+
+Running multiple commands in the background using `&`
+should spawn all commands in the background.
+The shell should prompt the user for the next command immediately
+without waiting for any of the executed commands to terminate.
+
+```
+sleep 10 & sleep 20 & sleep 30 &
+ps
+```
+
+#test-case[Multiple background jobs with non-zero exit codes]
+
+If a command part of a list of background jobs exits with a non-zero exit code,
+the subsequent jobs should still execute.
+
+```
+ls nonexistent-file & echo "Still executes!" & ls /nonexistent-file &
+```
+
+#test-case[Single sequential job with terminating `;`]
+
+For a sequential job, having a `;` at the end of the command line should be optional.
+
+```
+echo hello world;
+echo hello world ;
+```
+
+#test-case[Multiple sequential jobs]
+
+If there are multiple sequential jobs,
+each job should execute in order.
+Later jobs should only start after earlier jobs finish.
+
+```
+echo "Start"; sleep 5; echo "End"
+```
+
+(Take screenshot after "Start" is printed. Take another screenshot after `"End"` is printed.)
+
+#test-case[Multiple sequential jobs with non-zero exit codes]
+
+If a command part of a list of sequential jobs exits with a non-zero exit code,
+the subsequent jobs should still execute.
+
+```
+ls nonexistent-file ; echo "Still executes!" ; ls /nonexistent-file
+```
+
 = Source Code Listing
 
 #figure(
