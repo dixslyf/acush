@@ -886,34 +886,37 @@ Similarly, if there were previous commands,
 but we have navigated to the first command,
 pressing `Up` should not do anything.
 
-```
-Start the shell
-Press the Up arrow and take screenshot (should be no change)
-```
+#test-case-image("history-navigation-up-no-prev-a.png")
 
-```
-echo hello
-ls
-ps
-(up arrow)
-(up arrow)
-(up arrow)
-(up arrow, take screenshot, should be at echo hello)
-```
+It is difficult to demonstrate with an image,
+but the `Up` arrow was pressed in the screenshot above.
+We observe that indeed nothing happens.
+
+#test-case-image("history-navigation-up-no-prev-b.png")
+
+Again, it is difficult to demonstrate with an image,
+but pressing the `Up` arrow four times
+navigates upwards in the command history,
+moving to `ps`, `ls` and `echo hello`.
+Once on `echo hello`, the fourth `Up` arrow does not change
+the command line since there are no more previous commands.
 
 #test-case[Upwards history navigation when commands have been entered before]
 
-```
-echo hello
-ls
-ps
-(press up arrow and take screenshot)
-(press up arrow and take screenshot)
-(press up arrow and take screenshot)
-```
+Pressing the `Up` arrow should change the command line to
+the previous command in the command history.
 
-(3 screenshots in total)
+First, we execute `echo hello`, `ls` and `ps`
+to populate the command history.
 
+Pressing the `Up` arrow for the first time:
+#test-case-image("history-navigation-up-with-prev-a.png")
+
+Pressing the `Up` arrow for the second time:
+#test-case-image("history-navigation-up-with-prev-b.png")
+
+Pressing the `Up` arrow for the third time:
+#test-case-image("history-navigation-up-with-prev-c.png")
 
 #test-case[Downwards history navigation when at the latest new command]
 
@@ -921,97 +924,104 @@ When the currently selected history item is the latest (new command line),
 pressing the `Down` arrow should not do anything
 since there is no next command.
 
-```
-echo hello
-ls
-ps
-Then press the Down arrow and take screenshot (should be no change)
-```
+#test-case-image("history-navigation-down-no-next.png")
+
+It is difficult to demonstrate with an image,
+but the `Down` arrow was pressed in the screenshot.
+We observe that the command line does not change since there is no next command to navigate to.
 
 #test-case[Downwards history navigation when there are next commands]
 
-```
-echo hello
-ls
-ps
-(press up arrow)
-(press up arrow)
-(press up arrow)
-(take screenshot, should be at echo hello)
-(press down arrow and take screenshot)
-(press down arrow and take screenshot)
-(press down arrow and take screenshot, should be blank command line)
-```
+When there are next commands from the current command in the command history,
+pressing the down arrow should change the command line to the next command
+in the command history.
 
-(4 screenshots in total)
+First, we populate the command history by executing `echo hello`, `ls` and `ps`.
+Then, we press the `Up` arrow three times to navigate to the first entry
+in the command history:
+
+#test-case-image("history-navigation-down-with-next-a.png")
+
+Pressing the `Down` arrow for the first time:
+#test-case-image("history-navigation-down-with-next-b.png")
+
+Pressing the `Down` arrow for the second time:
+#test-case-image("history-navigation-down-with-next-c.png")
+
+Pressing the `Down` arrow for the third time:
+#test-case-image("history-navigation-down-with-next-d.png")
 
 #test-case[`history` without arguments]
 
 The `history` built-in without arguments should show the command history as a numbered list.
 The `history` command itself should be in the command history.
 
-```
-echo hello
-ls
-ps
-history
-```
+First, we populate the command history with `echo hello`, `ls` and `ps`.
+Then, we execute `history`:
+#test-case-image("history-without-arguments.png")
+
+Indeed, the commands executed appear in the history in their order of execution.
 
 #test-case[`history` with arguments]
 
 Calling the `history` built-in with arguments should print an error message to the standard error stream.
 
-```
-history hello
-history hello world
-```
+#test-case-image("history-with-arguments.png")
 
 #test-case[`!` with a valid index]
 
-```
-echo hello
-ls
-ps
-history
-!1
-!2
-!3
-```
+When using `!` with a valid index,
+the command corresponding to that index in the command history
+should be re-executed.
+
+We populate the command history with several commands,
+show the history via the `history` built-in,
+then repeat the commands using `!`.
+
+#test-case-image("exclam-valid-idx.png")
+
+Indeed, the correct commands are re-executed.
 
 #test-case[`!` with an invalid index]
 
-```
-echo hello
-ls
-ps
-history
-!0
-!100
-```
+When using `!` with an invalid index,
+an error message should be printed to the standard error stream.
+
+We populate the command history with several commands and
+show the command history via the `history` built-in.
+Then, we enter `!0` and `!100` as examples of invalid indices:
+
+#test-case-image("exclam-invalid-idx.png")
+
+The shell correctly prints an error message to the standard error stream.
 
 #test-case[`!` with a matching string]
 
-```
-echo hello
-ls
-ps
-history
-!ec
-!l
-!p
-!histo
-```
+When using `!` with a matching string,
+the shell searches through the command history upwards
+to find the first matching command.
+The matching command is re-executed.
+
+We populate the command history with several commands,
+show the history via the `history` built-in,
+then repeat the commands using `!` followed by matching prefixes.
+
+#test-case-image("exclam-matching-str.png")
+
+Indeed, the correct commands are re-executed using various prefixes.
 
 #test-case[`!` with a non-matching string]
 
-```
-echo hello
-ls
-ps
-history
-!hello
-!f
-```
+When using `!` with an non-matching string,
+an error message should be printed to the standard error stream.
+
+We populate the command history with several commands and
+show the command history via the `history` built-in.
+Then, we enter `!hello` and `!f` as examples of non-matching prefixes:
+
+// FIXME: #test-case-image("exclam-nonmatching-str.png")
+
+The shell correctly prints an error message to the standard error stream.
 
 == Single Foreground Job with a Single Command for Testing Shell Features
 
@@ -1021,99 +1031,54 @@ history
 
 `*` should be expanded to all files in the current working directory.
 
-```
-echo *
-```
+#test-case-image("wildcard-asterisk-alone.png")
 
 #test-case[Expansion of `*` in combination with other text when there are matching files in the current working directory.]
 
-```
-touch foobar
-touch test1.c
-touch test2.c
-
-echo foo*
-echo *.c
-```
+#test-case-image("wildcard-asterisk-mixed.png")
 
 #test-case[Expansion of multiple `*`s in combination with other text when there are matching files in the current working directory.]
 
-```
-touch foobar
-touch test1.c
-touch test2.c
-
-echo *oo*r
-echo *.*
-```
+#test-case-image("wildcard-asterisk-multi.png")
 
 #test-case[Expansion of `*` across directories.]
 
-```
-echo /*
-echo /ho*/*/*
-```
+#test-case-image("wildcard-asterisk-across-directories.png")
 
 #test-case[Expansion of `*` with no matching text.]
 
 When there is no matching text,
 the token should be taken literally.
 
-```
-echo *doesnotexist
-echo *does*not*exist*
-```
+#test-case-image("wildcard-asterisk-no-match.png")
 
 #test-case[Expansion of `?` when there are matching files in the current working directory.]
 
-```
-touch foobar
-echo ?oobar
-echo ???bar
-echo foo???
-echo ??????
-rm foobar
-```
+#test-case-image("wildcard-question.png")
 
 #test-case[Expansion of `?` with no matching files.]
 
 When there is no matching text, the token should be taken literally.
 
-```
-echo doesn?texist
-echo ?oesn?texis?
-```
+#test-case-image("wildcard-question-no-match.png")
 
 === Redirections
 
 #test-case[Redirecting standard output]
 
-```
-echo "hello world" > hello
-cat hello
-```
+#test-case-image("redirect-stdout.png")
 
 #test-case[Redirecting standard input]
 
-```
-echo "hello world" > hello
-cat < hello
-```
+#test-case-image("redirect-stdin.png")
 
 #test-case[Redirecting standard error]
 
-```
-ls /nonexistent 2> error.log
-cat error.log
-```
+#test-case-image("redirect-stderr.png")
 
 #test-case[Redirecting all standard streams]
 
-```
-echo hello > out 2> err < in
-cat out
-cat err
-```
+#test-case-image("redirect-all.png")
 
 #test-case[Repeated redirections]
 
@@ -1122,41 +1087,27 @@ the last (rightmost) redirection takes priority.
 In the case of redirecting standard output and standard error,
 all files are still created.
 
-```
-echo hello > out1 > out2 > out3
-
-ls /nonexistent 2> error1 2> error2 2> error3
-
-cat < out1 < out2 < out3
-```
+#test-case-image("redirect-repeated.png")
 
 #test-case[Missing redirection file]
 
 These commands should result in a parse error
 without any commands executed.
 
-```
-echo hello >
-cat <
-ls /nonexistent 2>
-```
+// FIXME: this is bugged
+#test-case-image("redirect-missing-file.png")
 
 === Pipelines
 
 #test-case[Pipeline with one pipe]
 
-```
-echo hello | grep "h"
-```
+#test-case-image("pipeline-single.png")
 
 #test-case[Pipeline with multiple pipes]
 
-```
-echo hello world > test
-cat test | grep world | wc -l
-```
-
 The test should print `1` on success as there is only one line.
+
+#test-case-image("pipeline-multi.png")
 
 == Job Execution
 
@@ -1169,10 +1120,7 @@ run the command in the background.
 The shell should prompt the user for the next command immediately
 without waiting for the executed command to terminate.
 
-```
-sleep 10 &
-ps
-```
+#test-case-image("job-bg-single.png")
 
 #test-case[Multiple background jobs]
 
@@ -1181,28 +1129,22 @@ should spawn all commands in the background.
 The shell should prompt the user for the next command immediately
 without waiting for any of the executed commands to terminate.
 
-```
-sleep 10 & sleep 20 & sleep 30 &
-ps
-```
+#test-case-image("job-bg-multi.png")
 
 #test-case[Multiple background jobs with non-zero exit codes]
 
 If a command part of a list of background jobs exits with a non-zero exit code,
 the subsequent jobs should still execute.
 
-```
-ls nonexistent-file & echo "Still executes!" & ls /nonexistent-file &
-```
+#test-case-image("job-bg-multi-non-zero.png")
 
 #test-case[Single sequential job with terminating `;`]
 
 For a sequential job, having a `;` at the end of the command line should be optional.
 
-```
-echo hello world;
-echo hello world ;
-```
+// TODO: should test clean up of zombies
+
+#test-case-image("job-fg-single.png")
 
 #test-case[Multiple sequential jobs]
 
@@ -1210,20 +1152,15 @@ If there are multiple sequential jobs,
 each job should execute in order.
 Later jobs should only start after earlier jobs finish.
 
-```
-echo "Start"; sleep 5; echo "End"
-```
-
-(Take screenshot after "Start" is printed. Take another screenshot after `"End"` is printed.)
+#test-case-image("job-fg-multi-a.png")
+#test-case-image("job-fg-multi-b.png")
 
 #test-case[Multiple sequential jobs with non-zero exit codes]
 
 If a command part of a list of sequential jobs exits with a non-zero exit code,
 the subsequent jobs should still execute.
 
-```
-ls nonexistent-file ; echo "Still executes!" ; ls /nonexistent-file
-```
+#test-case-image("job-fg-multi-non-zero.png")
 
 = Source Code Listing
 
