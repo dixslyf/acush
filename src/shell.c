@@ -150,12 +150,12 @@ char *get_command_by_prefix(struct sh_shell_context *ctx, char const *prefix) {
 
     char *match = NULL;
     size_t prefix_len = strlen(prefix);
-    for (size_t idx = ctx->history_count - 1; idx >= 0; idx--) {
-        size_t history_cmd_len = strlen(ctx->history[idx]);
+    for (size_t idx = ctx->history_count; idx >= 1; idx--) {
+        size_t history_cmd_len = strlen(ctx->history[idx - 1]);
         if (prefix_len <= history_cmd_len
-            && strncmp(ctx->history[idx], prefix, prefix_len) == 0)
+            && strncmp(ctx->history[idx - 1], prefix, prefix_len) == 0)
         {
-            match = ctx->history[idx];
+            match = ctx->history[idx - 1];
             break;
         }
     }
