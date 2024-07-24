@@ -709,20 +709,46 @@ in the job to cancel them
 
 == External Programs
 
-#test-case[External program without arguments]
+#test-case[External program without full path and arguments]
 
-This test case tests the most simple use case of the shell
-— calling external programs without any arguments.
+This test case tests a common use case of the shell
+— calling external programs without their full path and arguments.
 
 #test-case-image("external-program-without-arguments.png")
 
 Indeed, the shell executes `echo`, `ls` and `ps` without issue.
 
-#test-case[External program with a small number of arguments]
+#test-case[External program without full path and with a small number of arguments]
 
 Similar to the previous case, but with a small number of arguments.
 
 #test-case-image("external-program-small-number-of-arguments.png")
+
+The shell correctly passes the arguments to and executes the external programs.
+
+#test-case[External program with full path and without arguments]
+
+Similar to the previous cases, but the executable is specified by its full path.
+
+// TODO:
+```
+/usr/bin/echo
+/usr/bin/ls
+/usr/bin/ps
+```
+
+Indeed, the shell executes `echo`, `ls` and `ps` without issue.
+
+#test-case[External program with full path and a small number of arguments]
+
+Similar to the previous cases, but the executable is specified by its full path.
+
+// TODO:
+```
+/usr/bin/echo the quick brown fox
+/usr/bin/ls -l -t
+/usr/bin/ps -e
+```
 
 The shell correctly passes the arguments to and executes the external programs.
 
@@ -748,6 +774,26 @@ The shell correctly spawns the Firefox web browser.
 We also see that the shell does not prompt the user for the next command yet
 as Firefox has not terminated.
 Note that the warnings and errors are from Firefox, not from the shell.
+
+#test-case[Non-existent program specified without full path]
+
+The shell should print an error message to the standard error stream
+if a program specified without its full path cannot be found in the `PATH` environment variable.
+
+// TODO:
+```
+foobarbaz
+```
+
+#test-case[Non-existent program specified with full path]
+
+The shell should print an error message to the standard error stream
+if a program specified without its full path cannot be found in the `PATH` environment variable.
+
+// TODO:
+```
+/usr/bin/foobarbaz
+```
 
 == Built-in Commands
 
@@ -842,6 +888,37 @@ while `PWD` should be set to the parent working directory.
 
 #test-case-image("cd-dot-dot.png")
 
+#test-case[`cd` with complex relative path]
+
+`cd` should work with complex relative paths
+that use `.` and `..` in various sections of the path.
+The `OLDPWD` and `PWD` environment variables should be updated.
+
+// TODO:
+From the assignment directory:
+```
+pwd
+env | grep PWD
+cd ./src/../build/../.
+pwd
+env | grep PWD
+```
+
+#test-case[`cd` with complex absolute path]
+
+`cd` should work with complex absolute paths
+that use `.` and `..` in various sections of the path.
+The `OLDPWD` and `PWD` environment variables should be updated.
+
+// TODO:
+```
+pwd
+env | grep PWD
+cd /etc/../usr/../.
+pwd
+env | grep PWD
+```
+
 #test-case[`cd` with a non-existent relative path]
 
 `cd` with a non-existent relative path should print an error message to standard error
@@ -874,6 +951,20 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 #test-case-image("cd-dash-no-oldpwd.png")
 
 === `history`
+
+#test-case[`history` without arguments when there are no previous commands]
+
+When there are no previous commands,
+the `history` built-in without arguments should show a command history as a numbered list
+containing a single entry,
+which is `history` command itself.
+
+// TODO:
+From a fresh start of the shell:
+```
+history
+(should only contain one entry: 1. history)
+```
 
 #test-case[`history` without arguments when there are previous commands]
 
@@ -918,7 +1009,10 @@ moving to `ps`, `ls` and `echo hello`.
 Once on `echo hello`, the fourth `Up` arrow does not change
 the command line since there are no more previous commands.
 
-#test-case[Upwards history navigation when commands have been entered before]
+#test-case[Upwards history navigation when there are previous commands]
+
+When there are previous commands,
+pressing the `Up` arrow should move up through the history by one entry.
 
 Pressing the `Up` arrow should change the command line to
 the previous command in the command history.
@@ -935,7 +1029,7 @@ Pressing the `Up` arrow for the second time:
 Pressing the `Up` arrow for the third time:
 #test-case-image("history-navigation-up-with-prev-c.png")
 
-#test-case[Downwards history navigation when at the latest new command]
+#test-case[Downwards history navigation when there is no next command]
 
 When the currently selected history item is the latest (new command line),
 pressing the `Down` arrow should not do anything
@@ -949,9 +1043,22 @@ We observe that the command line does not change since there is no next command 
 
 #test-case[Downwards history navigation when there are next commands]
 
-When there are next commands from the current command in the command history,
-pressing the down arrow should change the command line to the next command
-in the command history.
+When the command history has been navigated upwards by pressing the `Up` arrow,
+pressing `Down` should perform the opposite,
+navigating through the history by one entry downwards.
+
+```
+echo hello
+ls
+ps
+(press up arrow)
+(press up arrow)
+(press up arrow)
+(take screenshot, should be at echo hello)
+(press down arrow and take screenshot)
+(press down arrow and take screenshot)
+(press down arrow and take screenshot, should be blank command line)
+```
 
 First, we populate the command history by executing `echo hello`, `ls` and `ps`.
 Then, we press the `Up` arrow three times to navigate to the first entry
@@ -967,6 +1074,28 @@ Pressing the `Down` arrow for the second time:
 
 Pressing the `Down` arrow for the third time:
 #test-case-image("history-navigation-down-with-next-d.png")
+
+#test-case[History navigation should remember the contents of the new command line]
+
+When there is partial input on the latest command line
+and the `Up` arrow key is used to navigate up the command history,
+returning to the latest command line should remember the partial input.
+
+// TODO:
+```
+echo hello
+ls
+ps
+(type in without pressing enter) hello world
+(press up arrow)
+(press up arrow)
+(press up arrow, take screenshot)
+(press down arrow)
+(press down arrow)
+(press down arrow, take screenshot --- should be "hello world")
+```
+
+== Command Repetition
 
 #test-case[`!` with a valid index]
 
@@ -1025,7 +1154,7 @@ The shell correctly prints an error message to the standard error stream.
 
 == Wildcard Expansion
 
-#test-case[Expansion of `*` alone when there are files in the current working directory]
+#test-case[Expansion of `*` alone when there are matching files in the current working directory]
 
 `*` should be expanded to all files in the current working directory.
 
@@ -1035,7 +1164,7 @@ The shell correctly prints an error message to the standard error stream.
 
 #test-case-image("wildcard-asterisk-mixed.png")
 
-#test-case[Expansion of multiple `*`s in combination with other text when there are matching files in the current working directory]
+#test-case[Expansion of multiple `*` in combination with other text when there are matching files in the current working directory]
 
 #test-case-image("wildcard-asterisk-multi.png")
 
@@ -1043,20 +1172,42 @@ The shell correctly prints an error message to the standard error stream.
 
 #test-case-image("wildcard-asterisk-across-directories.png")
 
-#test-case[Expansion of `*` with no matching text]
+#test-case[Expansion of `*` with no matching files]
 
-When there is no matching text,
+When there are no matching files,
 the token should be taken literally.
 
 #test-case-image("wildcard-asterisk-no-match.png")
 
-#test-case[Expansion of `?` when there are matching files in the current working directory]
+#test-case[Expansion of `?` alone when there are matching files in the current working directory]
+
+// TODO:
+```
+touch a
+touch b
+touch c
+echo ?
+```
+
+#test-case[Expansion of `?` in combination with other text when there are matching files in the current working directory]
 
 #test-case-image("wildcard-question.png")
 
+#test-case[Expansion of `?` across directories]
+
+// TODO:
+```
+mkdir foo
+touch foo/bar
+touch foo/baz
+touch foo/helloworld
+echo ?oo/ba?
+echo ???/???
+```
+
 #test-case[Expansion of `?` with no matching files]
 
-When there is no matching text, the token should be taken literally.
+When there are no matching files, the token should be taken literally.
 
 #test-case-image("wildcard-question-no-match.png")
 
@@ -1107,9 +1258,31 @@ The test should print `1` on success as there is only one line.
 
 #test-case-image("pipeline-multi.png")
 
-== Job Execution
+#test-case[Pipeline with command exiting with non-zero exit code]
 
-This section tests background and sequential jobs.
+If a command in a pipeline exits with a non-zero exit code,
+the pipeline should still work and the command's standard output stream
+should still be piped to the standard input stream of the next command.
+
+// TODO:
+```
+ls doesntexist | wc -l | cat
+```
+
+#test-case[Pipeline with missing command]
+
+When a pipeline is specified with a missing command after a pipe,
+the shell should print an error message to the standard error stream
+indicating a parse error.
+
+// TODO:
+```
+echo hello world | | grep world
+echo hello world |
+echo hello world | | grep world |
+```
+
+== Job Execution
 
 #test-case[Single background job]
 
@@ -1131,14 +1304,14 @@ without waiting for any of the executed commands to terminate.
 
 #test-case[Multiple background jobs with non-zero exit codes]
 
-If a command part of a list of background jobs exits with a non-zero exit code,
+If a command in a list of background jobs exits with a non-zero exit code,
 the subsequent jobs should still execute.
 
 #test-case-image("job-bg-multi-non-zero.png")
 
 #test-case[Single sequential job with terminating `;`]
 
-For a sequential job, having a `;` at the end of the command line should be optional.
+For a sequential job, having a `;` at the end of the command line should be allowed.
 
 // TODO: should test clean up of zombies
 
@@ -1155,7 +1328,7 @@ Later jobs should only start after earlier jobs finish.
 
 #test-case[Multiple sequential jobs with non-zero exit codes]
 
-If a command part of a list of sequential jobs exits with a non-zero exit code,
+If a command in a list of sequential jobs exits with a non-zero exit code,
 the subsequent jobs should still execute.
 
 #test-case-image("job-fg-multi-non-zero.png")
