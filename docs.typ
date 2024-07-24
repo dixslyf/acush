@@ -1309,11 +1309,26 @@ the subsequent jobs should still execute.
 
 #test-case-image("job-bg-multi-non-zero.png")
 
+#test-case[Clean-up of background job zombies]
+
+When spawning child processes for background jobs,
+the shell should not leave any zombie processes behind.
+
+```
+echo hello & ls & uname &
+ps (should not show echo, ls or uname)
+```
+
+```
+sleep 5 & sleep 5 & sleep 5 & sleep 5 & sleep 5 &
+ps (should show sleep in the process list)
+(wait for 5 seconds for sleep to exit)
+ps
+```
+
 #test-case[Single sequential job with terminating `;`]
 
 For a sequential job, having a `;` at the end of the command line should be allowed.
-
-// TODO: should test clean up of zombies
 
 #test-case-image("job-fg-single.png")
 
