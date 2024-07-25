@@ -752,6 +752,22 @@ Similar to the previous cases, but the executable is specified by its full path.
 
 The shell correctly passes the arguments to and executes the external programs.
 
+#test-case[External program without full path and with a large number of arguments]
+
+Similar to the previous cases, but with a small number of arguments.
+
+```
+echo hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello 
+```
+
+The shell correctly passes the arguments to and executes the external programs.
+
+#test-case[External program with full path and a large number of arguments]
+
+```
+/usr/bin/echo hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello 
+```
+
 #test-case[Long-running external program]
 
 This test case tests that the shell waits for the child process to terminate before prompting for the next command line.
@@ -823,6 +839,10 @@ Indeed, when no arguments are given, an error message is printed.
 #test-case-image("prompt-two-or-more-arguments.png")
 
 Indeed, when two or more arguments are given, an error message is printed.
+
+#test-case[`prompt` in a background job]
+
+Executing `prompt` in a background job should not change the prompt.
 
 === `cd` and `pwd`
 
@@ -950,6 +970,10 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-dash-no-oldpwd.png")
 
+#test-case[`cd` in a background job]
+
+Executing `cd` in a background job should not change the current working directory.
+
 === `history`
 
 #test-case[`history` without arguments when there are no previous commands]
@@ -982,6 +1006,87 @@ Indeed, the commands executed appear in the history in their order of execution.
 Calling the `history` built-in with arguments should print an error message to the standard error stream.
 
 #test-case-image("history-with-arguments.png")
+
+#test-case[`history` in a background job]
+
+Executing `history` in a background job should still print the command history.
+
+=== `exit`
+
+// TODO:
+
+#test-case[`exit` without any arguments]
+```
+exit
+```
+
+#test-case[`exit` with in-range non-negative integer exit code]
+```
+(in build/shell) exit 0
+(in bash) echo $?
+```
+
+```
+(in build/shell) exit 1
+(in bash) echo $?
+```
+
+```
+(in build/shell) exit 255
+(in bash) echo $?
+```
+
+#test-case[`exit` with non-negative integer exit code outside `0`--`255`]
+
+According to the POSIX manual for `exit`,
+if an exit code outside the range `0`--`255` (inclusive) is specified,
+the exit status of the program is undefined.
+However, the program should still exit.
+
+```
+(in build/shell) exit -1
+(in build/shell) exit 256
+(in build/shell) exit -32767
+(in build/shell) exit 32767
+```
+
+#test-case[`exit` with out-of-range integer exit code]
+
+When an exit code out of range of C's `int` data type is specified,
+`exit` should print an error message to the standard error stream
+without exiting the shell.
+
+```
+(in build/shell) exit -2147483649
+(in build/shell) exit 2147483648
+```
+
+#test-case[`exit` with non-integer exit code]
+
+```
+exit helloworld
+```
+
+#test-case[`exit` with two or more arguments]
+
+If two or more arguments are specified to `exit`,
+`exit` should print an error message to the standard error stream
+without exiting the shell.
+
+```
+exit 123 123
+exit hello world
+```
+
+#test-case[`exit` in a background job]
+
+Executing `exit` in a background job should not cause the shell to exit.
+
+```
+exit &
+exit 0 &
+exit 1 &
+```
 
 == History Navigation
 
@@ -1347,6 +1452,122 @@ If a command in a list of sequential jobs exits with a non-zero exit code,
 the subsequent jobs should still execute.
 
 #test-case-image("job-fg-multi-non-zero.png")
+
+== String Parsing
+
+(All the test cases below should only print one line.)
+
+#test-case[Simple double quoted string]
+```
+printf '%s\\n' "helloworld123"
+```
+
+#test-case[Double quoted string with whitespace]
+```
+printf '%s\\n' "   hello world   123   "
+```
+
+#test-case[Double quoted string with special characters]
+```
+printf '%s\\n' "&;!|<>2>'*?["
+```
+
+#test-case[Double quoted string with escape sequences]
+```
+printf '%s\\n' "\\"
+printf '%s\\n' "\""
+printf '%s\\n' "\ \h\e\l\l\o\ \w\o\r\l\d\ \1\2\3\ "
+```
+
+#test-case[Simple single quoted string]
+```
+printf '%s\\n' 'helloworld123'
+```
+
+#test-case[Single quoted string with whitespace]
+```
+printf '%s\\n' '   hello world   123   '
+```
+
+#test-case[Single quoted string with special characters]
+```
+printf '%s\\n' '&;!|<>2>"*?['
+```
+
+#test-case[Single quoted string with escape sequences]
+```
+printf '%s\\n' '\\'
+printf '%s\\n' '\''
+printf '%s\\n' '\ \h\e\l\l\o\ \w\o\r\l\d\ \1\2\3\ '
+```
+
+#test-case[String concatenation]
+```
+printf '%s\\n' " hello "' world '123" &;!|<>"'2>"*?[ '
+```
+
+== Complex Command Lines
+
+#test-case[Mixture of sequential and background jobs]
+
+```
+echo hello world & sleep 3; ls -lt ; ps &
+```
+
+#test-case[Mixture of piping and redirections]
+
+```
+echo "hello world" | grep hello > hello
+cat < hello | grep world | cat 2> cat-error
+```
+
+#test-case[Mixture of piping, redirections, sequential jobs and background jobs]
+
+```
+(below is one line)
+echo "hello world" > hello | grep hello | cat & ls -lt > ls-out ; cat < ls-out ; ps -e & ls nonexistent 2> ls-error
+```
+
+== Miscellaneous
+
+#test-case[Inheritance of parent environment]
+```
+env
+```
+
+#test-case[Empty command line]
+```
+Press enter a few times without entering any other input, then take a screenshot
+```
+
+#test-case[Non-termination on `CTRL-C`, `CTRL-Z` and `CTRL-\`]
+```
+(start the shell)
+(ctrl-c, take screenshot)
+(ctrl-z, take screenshot)
+(ctrl-\, take screenshot)
+```
+
+#test-case[Insignificance of whitespace]
+
+```
+sleep 3&
+sleep 3 &
+echo hello;
+echo hello ;
+echo hello|grep hello|cat
+echo hello>out
+ls nonexistent2>err
+cat<out
+```
+
+#test-case[Compilation]
+
+```
+make clean
+make
+build/shell
+```
 
 = Source Code Listing
 
