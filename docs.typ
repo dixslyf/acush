@@ -1440,7 +1440,6 @@ all files are still created.
 These commands should result in a parse error
 without any commands executed.
 
-// FIXME: this is bugged
 #test-case-image("redirect-missing-file.png")
 
 == Pipelines

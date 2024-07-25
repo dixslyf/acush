@@ -499,6 +499,11 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
             0644
         );
 
+        if (fd_to < 0) {
+            perror("open");
+            continue;
+        }
+
         int *fds_mem;
         int std_fileno;
         switch (redir.type) {
