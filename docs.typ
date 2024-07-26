@@ -730,12 +730,7 @@ The shell correctly passes the arguments to and executes the external programs.
 
 Similar to the previous cases, but the executable is specified by its full path.
 
-// TODO:
-```
-/usr/bin/echo
-/usr/bin/ls
-/usr/bin/ps
-```
+#test-case-image("external-program-full-without-arguments.png")
 
 Indeed, the shell executes `echo`, `ls` and `ps` without issue.
 
@@ -743,12 +738,7 @@ Indeed, the shell executes `echo`, `ls` and `ps` without issue.
 
 Similar to the previous cases, but the executable is specified by its full path.
 
-// TODO:
-```
-/usr/bin/echo the quick brown fox
-/usr/bin/ls -l -t
-/usr/bin/ps -e
-```
+#test-case-image("external-program-full-small-number-of-arguments.png")
 
 The shell correctly passes the arguments to and executes the external programs.
 
@@ -756,17 +746,13 @@ The shell correctly passes the arguments to and executes the external programs.
 
 Similar to the previous cases, but with a small number of arguments.
 
-```
-echo hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello
-```
+#test-case-image("external-program-large-number-of-arguments.png")
 
 The shell correctly passes the arguments to and executes the external programs.
 
 #test-case[External program with full path and a large number of arguments]
 
-```
-/usr/bin/echo hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello
-```
+#test-case-image("external-program-full-large-number-of-arguments.png")
 
 #test-case[Long-running external program]
 
@@ -796,20 +782,14 @@ Note that the warnings and errors are from Firefox, not from the shell.
 The shell should print an error message to the standard error stream
 if a program specified without its full path cannot be found in the `PATH` environment variable.
 
-// TODO:
-```
-foobarbaz
-```
+#test-case-image("external-program-nonexistent.png")
 
 #test-case[Non-existent program specified with full path]
 
 The shell should print an error message to the standard error stream
 if a program specified without its full path cannot be found in the `PATH` environment variable.
 
-// TODO:
-```
-/usr/bin/foobarbaz
-```
+#test-case-image("external-program-full-nonexistent.png")
 
 == Built-in Commands
 
