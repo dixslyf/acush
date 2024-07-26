@@ -1168,7 +1168,7 @@ We populate the command history with several commands and
 show the command history via the `history` built-in.
 Then, we enter `!hello` and `!f` as examples of non-matching prefixes:
 
-// FIXME: #test-case-image("exclam-nonmatching-str.png")
+#test-case-image("exclam-non-matching-str.png")
 
 The shell correctly prints an error message to the standard error stream.
 
