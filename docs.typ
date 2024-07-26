@@ -916,7 +916,6 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 `cd` with a non-existent absolute path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-// FIXME: missing backslash
 #test-case-image("cd-absolute-nonexistent.png")
 
 #test-case[`cd` without any arguments but with an unset `HOME` environment variable]
@@ -1309,7 +1308,6 @@ the subsequent jobs should still execute.
 When spawning child processes for background jobs,
 the shell should not leave any zombie processes behind.
 
-// FIXME: missing `ps` after sleep 5 &
 #test-case-image("job-bg-clean-up.png")
 
 #test-case[Single sequential job with terminating `;`]
@@ -1339,53 +1337,40 @@ the subsequent jobs should still execute.
 (All the test cases below should only print one line.)
 
 #test-case[Simple double quoted string]
-```
-printf '%s\\n' "helloworld123"
-```
+
+#test-case-image("string-double-simple.png")
 
 #test-case[Double quoted string with whitespace]
-```
-printf '%s\\n' "   hello world   123   "
-```
+
+#test-case-image("string-double-whitespace.png")
 
 #test-case[Double quoted string with special characters]
-```
-printf '%s\\n' "&;!|<>2>'*?["
-```
+
+#test-case-image("string-double-special.png")
 
 #test-case[Double quoted string with escape sequences]
-```
-printf '%s\\n' "\\"
-printf '%s\\n' "\""
-printf '%s\\n' "\ \h\e\l\l\o\ \w\o\r\l\d\ \1\2\3\ "
-```
+
+#test-case-image("string-double-escape.png")
 
 #test-case[Simple single quoted string]
-```
-printf '%s\\n' 'helloworld123'
-```
+
+#test-case-image("string-single-simple.png")
 
 #test-case[Single quoted string with whitespace]
-```
-printf '%s\\n' '   hello world   123   '
-```
+
+#test-case-image("string-single-whitespace.png")
 
 #test-case[Single quoted string with special characters]
-```
-printf '%s\\n' '&;!|<>2>"*?['
-```
+
+#test-case-image("string-single-special.png")
 
 #test-case[Single quoted string with escape sequences]
-```
-printf '%s\\n' '\\'
-printf '%s\\n' '\''
-printf '%s\\n' '\ \h\e\l\l\o\ \w\o\r\l\d\ \1\2\3\ '
-```
+
+#test-case-image("string-single-escape.png")
 
 #test-case[String concatenation]
-```
-printf '%s\\n' " hello "' world '123" &;!|<>"'2>"*?[ '
-```
+
+#test-case-image("string-concat.png")
 
 == Complex Command Lines
 
