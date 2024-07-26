@@ -1385,23 +1385,15 @@ printf '%s\\n' " hello "' world '123" &;!|<>"'2>"*?[ '
 
 #test-case[Mixture of sequential and background jobs]
 
-```
-echo hello world & sleep 3; ls -lt ; ps &
-```
+#test-case-image("complex-cmdline-fg-bg-jobs.png")
 
 #test-case[Mixture of piping and redirections]
 
-```
-echo "hello world" | grep hello > hello
-cat < hello | grep world | cat 2> cat-error
-```
+#test-case-image("complex-cmdline-pipe-redir.png")
 
 #test-case[Mixture of piping, redirections, sequential jobs and background jobs]
 
-```
-(below is one line)
-echo "hello world" > hello | grep hello | cat & ls -lt > ls-out ; cat < ls-out ; ps -e & ls nonexistent 2> ls-error
-```
+#test-case-image("complex-cmdline-pipe-redir-bg-fg-jobs.png")
 
 == Miscellaneous
 
