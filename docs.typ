@@ -1340,19 +1340,27 @@ the subsequent jobs should still execute.
 
 (All the test cases below should only print one line.)
 
-// FIXME: broken
-
 #test-case[Simple double quoted string]
-#test-case-image("string-double-simple.png")
+```
+printf '%s\\n' "helloworld123"
+```
 
 #test-case[Double quoted string with whitespace]
-#test-case-image("string-double-with-whitespace.png")
+```
+printf '%s\\n' "   hello world   123   "
+```
 
 #test-case[Double quoted string with special characters]
-#test-case-image("string-double-with-special.png")
+```
+printf '%s\\n' "&;!|<>2>'*?["
+```
 
 #test-case[Double quoted string with escape sequences]
-#test-case-image("string-double-with-escape-seq.png")
+```
+printf '%s\\n' "\\"
+printf '%s\\n' "\""
+printf '%s\\n' "\ \h\e\l\l\o\ \w\o\r\l\d\ \1\2\3\ "
+```
 
 #test-case[Simple single quoted string]
 ```
