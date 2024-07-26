@@ -1269,10 +1269,7 @@ If a command in a pipeline exits with a non-zero exit code,
 the pipeline should still work and the command's standard output stream
 should still be piped to the standard input stream of the next command.
 
-// TODO:
-```
-ls doesntexist | wc -l | cat
-```
+#test-case-image("pipeline-non-zero.png")
 
 #test-case[Pipeline with missing command]
 
@@ -1280,12 +1277,7 @@ When a pipeline is specified with a missing command after a pipe,
 the shell should print an error message to the standard error stream
 indicating a parse error.
 
-// TODO:
-```
-echo hello world | | grep world
-echo hello world |
-echo hello world | | grep world |
-```
+#test-case-image("pipeline-missing.png")
 
 == Job Execution
 
