@@ -162,7 +162,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
     {
         // Reached the closing quote for a quoted string.
         ctx->state = SH_LEX_STATE_WORD_QUOTED_END;
-    } else if (old_state == SH_LEX_STATE_WORD_QUOTED && raw_token.type == SH_TOKEN_END)
+    } else if (old_state == SH_LEX_STATE_WORD_QUOTED && raw_token.type == SH_RAW_TOKEN_END)
     {
         // Reached the end of the token sequence even though we haven't
         // terminated the current quoted string.
@@ -191,7 +191,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
     // If we exited a word, then write the token.
     if ((old_state == SH_LEX_STATE_WORD_QUOTED_END
          || old_state == SH_LEX_STATE_WORD_UNQUOTED)
-        && (ctx->state == SH_LEX_STATE_DULL || raw_token.type == SH_TOKEN_END))
+        && (ctx->state == SH_LEX_STATE_DULL || raw_token.type == SH_RAW_TOKEN_END))
     {
         enum sh_end_word_result end_word_result = end_word(ctx);
         switch (end_word_result) {
@@ -238,7 +238,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
             // Special case for `2>`. We need to escape the `2` and add it to
             // the word, but create a separate special for token `>`.
             if (ctx->state == SH_LEX_STATE_WORD_UNQUOTED
-                && raw_token.type == SH_TOKEN_2_ANGLE_BRACKET_R)
+                && raw_token.type == SH_RAW_TOKEN_2_ANGLE_BRACKET_R)
             {
                 // Append the escaped "2".
                 if (append_to_catbuf(ctx, "2", 1) != SH_APPEND_SUCCESS) {
