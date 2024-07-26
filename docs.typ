@@ -1398,43 +1398,29 @@ printf '%s\\n' " hello "' world '123" &;!|<>"'2>"*?[ '
 == Miscellaneous
 
 #test-case[Inheritance of parent environment]
-```
-env
-```
+#test-case-image("misc-env.png")
 
 #test-case[Empty command line]
-```
-Press enter a few times without entering any other input, then take a screenshot
-```
+#test-case-image("misc-empty.png")
 
 #test-case[Non-termination on `CTRL-C`, `CTRL-Z` and `CTRL-\`]
-```
-(start the shell)
-(ctrl-c, take screenshot)
-(ctrl-z, take screenshot)
-(ctrl-\, take screenshot)
-```
+
+After pressing `CTRL-C`:
+#test-case-image("misc-non-termination-a.png")
+
+After pressing `CTRL-Z`:
+#test-case-image("misc-non-termination-b.png")
+
+After pressing `CTRL-\`:
+#test-case-image("misc-non-termination-c.png")
 
 #test-case[Insignificance of whitespace]
 
-```
-sleep 3&
-sleep 3 &
-echo hello;
-echo hello ;
-echo hello|grep hello|cat
-echo hello>out
-ls nonexistent2>err
-cat<out
-```
+#test-case-image("misc-insignificant-whitespace.png")
 
 #test-case[Compilation]
 
-```
-make clean
-make
-build/shell
-```
+#test-case-image("misc-compilation.png")
 
 = Source Code Listing
 
