@@ -824,9 +824,7 @@ Indeed, when two or more arguments are given, an error message is printed.
 
 Executing `prompt` in a background job should not change the prompt.
 
-```
-prompt john$ &
-```
+#test-case-image("prompt-bg.png")
 
 === `cd` and `pwd`
 
