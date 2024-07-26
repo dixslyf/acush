@@ -1311,17 +1311,8 @@ the subsequent jobs should still execute.
 When spawning child processes for background jobs,
 the shell should not leave any zombie processes behind.
 
-```
-echo hello & ls & uname &
-ps (should not show echo, ls or uname)
-```
-
-```
-sleep 5 & sleep 5 & sleep 5 & sleep 5 & sleep 5 &
-ps (should show sleep in the process list)
-(wait for 5 seconds for sleep to exit)
-ps
-```
+// FIXME: missing `ps` after sleep 5 &
+#test-case-image("job-bg-clean-up.png")
 
 #test-case[Single sequential job with terminating `;`]
 
