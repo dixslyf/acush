@@ -170,7 +170,7 @@ void run(struct sh_shell_context *ctx, char const *line) {
         fprintf(stderr, "error: memory failure\n");
     } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
         fprintf(stderr, "error: unterminated quote\n");
-    } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
+    } else if (lex_result == SH_LEX_GLOB_ERROR) {
         fprintf(stderr, "error: glob error\n");
     } else {
         struct sh_ast_root ast;
