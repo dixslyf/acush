@@ -836,13 +836,7 @@ prompt john$ &
 and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the home directory.
 
-```
-pwd
-env | grep PWD
-cd
-pwd
-env | grep PWD
-```
+#test-case-image("cd-without-arguments.png")
 
 #test-case[`cd` with a valid relative path and `pwd`]
 
@@ -852,13 +846,7 @@ and set the `OLDPWD` and `PWD` environment variables.
 
 From the home directory:
 
-```
-pwd
-env | grep PWD
-cd Documents
-pwd
-env | grep PWD
-```
+#test-case-image("cd-relative.png")
 
 #test-case[`cd` with a valid absolute path and `pwd`]
 
@@ -866,22 +854,9 @@ env | grep PWD
 and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the absolute path of the directory.
 
-```
-pwd
-env | grep PWD
-cd /
-pwd
-env | grep PWD
-```
+#test-case-image("cd-absolute-a.png")
 
-(separate screenshot)
-```
-pwd
-env | grep PWD
-cd /usr/bin
-pwd
-env | grep PWD
-```
+#test-case-image("cd-absolute-b.png")
 
 #test-case[`cd` with `-` and `pwd`]
 
@@ -889,19 +864,7 @@ env | grep PWD
 and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the absolute path of the directory.
 
-```
-  pwd
-  env | grep PWD
-  cd /
-  pwd
-  env | grep PWD
-  cd -
-  pwd
-  env | grep PWD
-  cd -
-  pwd
-  env | grep PWD
-```
+#test-case-image("cd-dash.png")
 
 #test-case[`cd` with two or more arguments]
 
@@ -909,29 +872,14 @@ and set the `OLDPWD` and `PWD` environment variables.
 to standard error without changing the working directory
 or modifying the `OLDPWD` and `PWD` environment variables.
 
-```
-pwd
-env | grep PWD
-cd hello world
-pwd
-env | grep PWD
-cd the quick brown fox jumps over the lazy dog
-pwd
-env | grep PWD
-```
+#test-case-image("cd-two-or-more-arguments.png")
 
 #test-case[`cd .`]
 
 `cd .` should change the working directory to the current directory~(i.e., the current directory does not change).
 The `OLDPWD` and `PWD` environment variables should be set to the current working directory.
 
-```
-pwd
-env | grep PWD
-cd .
-pwd
-env | grep PWD
-```
+#test-case-image("cd-dot.png")
 
 #test-case[`cd ..`]
 
@@ -939,13 +887,7 @@ env | grep PWD
 The `OLDPWD` environment variable should be set to the original current working directory
 while `PWD` should be set to the parent working directory.
 
-```
-pwd
-env | grep PWD
-cd ..
-pwd
-env | grep PWD
-```
+#test-case-image("cd-dot-dot.png")
 
 #test-case[`cd` with complex relative path]
 
@@ -953,15 +895,8 @@ env | grep PWD
 that use `.` and `..` in various sections of the path.
 The `OLDPWD` and `PWD` environment variables should be updated.
 
-// TODO:
 From the assignment directory:
-```
-pwd
-env | grep PWD
-cd ./src/../build/../.
-pwd
-env | grep PWD
-```
+#test-case-image("cd-relative-complex.png")
 
 #test-case[`cd` with complex absolute path]
 
@@ -969,40 +904,22 @@ env | grep PWD
 that use `.` and `..` in various sections of the path.
 The `OLDPWD` and `PWD` environment variables should be updated.
 
-// TODO:
-```
-pwd
-env | grep PWD
-cd /etc/../usr/../.
-pwd
-env | grep PWD
-```
+#test-case-image("cd-absolute-complex.png")
 
 #test-case[`cd` with a non-existent relative path]
 
 `cd` with a non-existent relative path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-```
-pwd
-env | grep PWD
-cd blahblahblah
-pwd
-env | grep PWD
-```
+#test-case-image("cd-relative-nonexistent.png")
 
 #test-case[`cd` with a non-existent absolute path]
 
 `cd` with a non-existent absolute path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
-```
-pwd
-env | grep PWD
-cd /blah/blah/blah
-pwd
-env | grep PWD
-```
+// FIXME: missing backslash
+#test-case-image("cd-absolute-nonexistent.png")
 
 #test-case[`cd` without any arguments but with an unset `HOME` environment variable]
 
@@ -1024,23 +941,13 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 Executing `cd` in a background job should not change the current working directory.
 
-```
-pwd
-env | grep PWD
-cd &
-cd /usr/bin &
-cd .. &
-pwd
-env | grep PWD
-```
+#test-case-image("cd-bg.png")
 
 #test-case[`pwd` in a background job]
 
 Executing `pwd` in a background job should still print the current working directory.
 
-```
-pwd &
-```
+#test-case-image("pwd-bg.png")
 
 === `history`
 
