@@ -1091,19 +1091,6 @@ When the command history has been navigated upwards by pressing the `Up` arrow,
 pressing `Down` should perform the opposite,
 navigating through the history by one entry downwards.
 
-```
-echo hello
-ls
-ps
-(press up arrow)
-(press up arrow)
-(press up arrow)
-(take screenshot, should be at echo hello)
-(press down arrow and take screenshot)
-(press down arrow and take screenshot)
-(press down arrow and take screenshot, should be blank command line)
-```
-
 First, we populate the command history by executing `echo hello`, `ls` and `ps`.
 Then, we press the `Up` arrow three times to navigate to the first entry
 in the command history:
@@ -1125,19 +1112,8 @@ When there is partial input on the latest command line
 and the `Up` arrow key is used to navigate up the command history,
 returning to the latest command line should remember the partial input.
 
-// TODO:
-```
-echo hello
-ls
-ps
-(type in without pressing enter) hello world
-(press up arrow)
-(press up arrow)
-(press up arrow, take screenshot)
-(press down arrow)
-(press down arrow)
-(press down arrow, take screenshot --- should be "hello world")
-```
+#test-case-image("history-remember-a.png")
+#test-case-image("history-remember-b.png")
 
 == Command Repetition
 
