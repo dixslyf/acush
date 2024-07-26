@@ -1201,29 +1201,15 @@ the token should be taken literally.
 
 #test-case[Expansion of `?` alone when there are matching files in the current working directory]
 
-// TODO:
-```
-touch a
-touch b
-touch c
-echo ?
-```
+#test-case-image("wildcard-question-alone.png")
 
 #test-case[Expansion of `?` in combination with other text when there are matching files in the current working directory]
 
-#test-case-image("wildcard-question.png")
+#test-case-image("wildcard-question-mixed.png")
 
 #test-case[Expansion of `?` across directories]
 
-// TODO:
-```
-mkdir foo
-touch foo/bar
-touch foo/baz
-touch foo/helloworld
-echo ?oo/ba?
-echo ???/???
-```
+#test-case-image("wildcard-question-across-directories.png")
 
 #test-case[Expansion of `?` with no matching files]
 
