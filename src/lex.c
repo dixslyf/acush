@@ -117,7 +117,7 @@ enum sh_lex_result lex(struct sh_lex_context *ctx) {
         size_t new_catbuf_capacity = 16;
         char *new_catbuf = malloc(sizeof(char) * new_catbuf_capacity);
         if (new_catbuf == NULL) {
-          return SH_LEX_MEMORY_ERROR;
+            return SH_LEX_MEMORY_ERROR;
         }
 
         ctx->catbuf_capacity = new_catbuf_capacity;
@@ -459,10 +459,17 @@ enum sh_end_word_result end_word(struct sh_lex_context *ctx) {
     // treat the word literally.
     if (glob_ret == GLOB_NOMATCH || glob_ret < 0) {
         // We must first remove backslashes since they are no longer needed.
+        // However, we only remove one backslash if there are two consecutive
+        // backslashes since the second backslash is escaped.
         char *pread = ctx->catbuf;
         char *pwrite = ctx->catbuf;
         while (*pread != '\0') {
-            if (*pread != '\\') {
+            // Handle escaped backslashes.
+            if (*pread == '\\' && *(pread + 1) == '\\') {
+                pread++;
+                *pwrite = *pread;
+                pwrite++;
+            } else if (*pread != '\\') {
                 *pwrite = *pread;
                 pwrite++;
             }
