@@ -985,28 +985,12 @@ Executing `history` in a background job should still print the command history.
 
 === `exit`
 
-// TODO:
-
 #test-case[`exit` without any arguments]
-```
-exit
-```
+
+#test-case-image("exit-without-arguments.png")
 
 #test-case[`exit` with in-range non-negative integer exit code]
-```
-(in build/shell) exit 0
-(in bash) echo $?
-```
-
-```
-(in build/shell) exit 1
-(in bash) echo $?
-```
-
-```
-(in build/shell) exit 255
-(in bash) echo $?
-```
+#test-case-image("exit-in-range-non-negative.png")
 
 #test-case[`exit` with non-negative integer exit code outside `0`--`255`]
 
@@ -1015,12 +999,7 @@ if an exit code outside the range `0`--`255` (inclusive) is specified,
 the exit status of the program is undefined.
 However, the program should still exit.
 
-```
-(in build/shell) exit -1
-(in build/shell) exit 256
-(in build/shell) exit -32767
-(in build/shell) exit 32767
-```
+#test-case-image("exit-non-negative-outside-0-255.png")
 
 #test-case[`exit` with out-of-range integer exit code]
 
@@ -1028,16 +1007,11 @@ When an exit code out of range of C's `int` data type is specified,
 `exit` should print an error message to the standard error stream
 without exiting the shell.
 
-```
-(in build/shell) exit -2147483649
-(in build/shell) exit 2147483648
-```
+#test-case-image("exit-out-of-range-integer.png")
 
 #test-case[`exit` with non-integer exit code]
 
-```
-exit helloworld
-```
+#test-case-image("exit-non-integer.png")
 
 #test-case[`exit` with two or more arguments]
 
@@ -1045,20 +1019,13 @@ If two or more arguments are specified to `exit`,
 `exit` should print an error message to the standard error stream
 without exiting the shell.
 
-```
-exit 123 123
-exit hello world
-```
+#test-case-image("exit-two-or-more-arguments.png")
 
 #test-case[`exit` in a background job]
 
 Executing `exit` in a background job should not cause the shell to exit.
 
-```
-exit &
-exit 0 &
-exit 1 &
-```
+#test-case-image("exit-bg.png")
 
 == History Navigation
 
