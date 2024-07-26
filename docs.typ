@@ -958,12 +958,7 @@ the `history` built-in without arguments should show a command history as a numb
 containing a single entry,
 which is `history` command itself.
 
-// TODO:
-From a fresh start of the shell:
-```
-history
-(should only contain one entry: 1. history)
-```
+#test-case-image("history-without-arguments-and-prev.png")
 
 #test-case[`history` without arguments when there are previous commands]
 
@@ -972,7 +967,7 @@ The `history` command itself should be in the command history.
 
 First, we populate the command history with `echo hello`, `ls` and `ps`.
 Then, we execute `history`:
-#test-case-image("history-without-arguments.png")
+#test-case-image("history-without-arguments-with-prev.png")
 
 Indeed, the commands executed appear in the history in their order of execution.
 
@@ -986,9 +981,7 @@ Calling the `history` built-in with arguments should print an error message to t
 
 Executing `history` in a background job should still print the command history.
 
-```
-history &
-```
+#test-case-image("history-bg.png")
 
 === `exit`
 
