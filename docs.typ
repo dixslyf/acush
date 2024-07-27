@@ -111,6 +111,8 @@
 
 - `Assignment2.pdf`: This document.
 
+- `build/`: Contains build artefacts, including the compiled executable `build/shell`.
+
 = Task Description
 
 The task is to implement a Unix shell, similar to Bash, using the C programming language.
@@ -1662,10 +1664,7 @@ The specification from the assignment is incompatible with Bash's behaviour.
 Escape sequences should be allowed in unqutoed strings
 to interpret the character after a `\` literally.
 
-```
-  % printf '%s\\n' \\\&\;\!\|\<\>\2\>\"\'\*\?\[\ \a\b\c\d\e\f\1\2\3\4\5\6
-  \&;!|<>2>"'*?[ abcdef123456
-```
+#test-case-image("string-unquoted-escape.png")
 
 Indeed, the output demonstrates that `\` escapes unquoted characters,
 even special and whitespace characters.
