@@ -170,8 +170,10 @@ void run(struct sh_shell_context *ctx, char const *line) {
         fprintf(stderr, "error: memory failure\n");
     } else if (lex_result == SH_LEX_UNTERMINATED_QUOTE) {
         fprintf(stderr, "error: unterminated quote\n");
+        add_line_to_history(ctx, line);
     } else if (lex_result == SH_LEX_GLOB_ERROR) {
         fprintf(stderr, "error: glob error\n");
+        add_line_to_history(ctx, line);
     } else {
         struct sh_ast_root ast;
         enum sh_parse_result parse_result = parse(
@@ -182,6 +184,7 @@ void run(struct sh_shell_context *ctx, char const *line) {
 
         if (parse_result != SH_PARSE_SUCCESS) {
             printf("error: failed to parse command line\n");
+            add_line_to_history(ctx, line);
         } else {
             run_ast(ctx, &ast, line);
             destroy_ast(&ast);
