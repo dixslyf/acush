@@ -193,7 +193,7 @@ Furthermore, the shell must satisfy the following requirements:
 
 = Self-Diagnosis and Evaluation
 
-Implemented features:
+What works:
 
 - The shell implements the `prompt` built-in command.
   The prompt is set to the second argument of `prompt`.
@@ -271,7 +271,6 @@ Implemented features:
   the shell does _not_ wait for the job to complete
   before prompting the user for the next command line.
   Background child processes are correctly consumed
-  using the `waitpid()` function after they terminate
   to prevent zombies.
   Other jobs can be specified after the `&`.
 
@@ -336,9 +335,9 @@ Implemented features:
 
 - Whitespace is not significant except for delimiting tokens of a command line.
 
-Differences from Bash:
+What does not work:
 
-// TODO:
+- Resizing the terminal window does not re-layout the current input text.
 
 = Solution Discussion
 
@@ -732,7 +731,7 @@ Similar to the previous cases, but the executable is specified by its full path.
 
 #test-case-image("external-program-full-without-arguments.png")
 
-Indeed, the shell executes `echo`, `ls` and `ps` without issue.
+Indeed, the shell executes `/usr/bin/echo`, `/usr/bin/ls` and `/usr/bin/ps` without issue.
 
 #test-case[External program with full path and a small number of arguments]
 
@@ -744,7 +743,7 @@ The shell correctly passes the arguments to and executes the external programs.
 
 #test-case[External program without full path and with a large number of arguments]
 
-Similar to the previous cases, but with a small number of arguments.
+The shell should be able to pass a long list of arguments to programs.
 
 #test-case-image("external-program-large-number-of-arguments.png")
 
@@ -752,7 +751,11 @@ The shell correctly passes the arguments to and executes the external programs.
 
 #test-case[External program with full path and a large number of arguments]
 
+Similar to the previous case, but the program is specified by its full path.
+
 #test-case-image("external-program-full-large-number-of-arguments.png")
+
+The shell correctly passes the arguments to and executes the external programs.
 
 #test-case[Long-running external program]
 
@@ -784,12 +787,16 @@ if a program specified without its full path cannot be found in the `PATH` envir
 
 #test-case-image("external-program-nonexistent.png")
 
+Indeed, the shell prints an error message.
+
 #test-case[Non-existent program specified with full path]
 
 The shell should print an error message to the standard error stream
-if a program specified without its full path cannot be found in the `PATH` environment variable.
+if a program specified with its full path cannot be found.
 
 #test-case-image("external-program-full-nonexistent.png")
+
+Indeed, the shell prints an error message.
 
 == Built-in Commands
 
@@ -826,25 +833,35 @@ Executing `prompt` in a background job should not change the prompt.
 
 #test-case-image("prompt-bg.png")
 
+The screenshot shows that the prompt is correctly left unchanged.
+
 === `cd` and `pwd`
+
+Most screenshots in this section show the before and after output of `pwd` and the values of the `PWD` and `OLDPWD` environment variables.
 
 #test-case[`cd` without any arguments and `pwd`]
 
 `cd` without any arguments should change the working directory to the user's home directory
 and set the `OLDPWD` and `PWD` environment variables.
-`pwd` should show the home directory.
+`pwd` should show the absolute path of the home directory.
 
 #test-case-image("cd-without-arguments.png")
+
+Indeed, the current working directory is changed to the user's home directory as indicated by `pwd` and `PWD`.
+`OLDPWD` is updated to the previous working directory.
 
 #test-case[`cd` with a valid relative path and `pwd`]
 
 `cd` with a valid relative path argument should change the current working directory to that path
-and set the `OLDPWD` and `PWD` environment variables.
+and set the `OLDPWD` and `PWD` environment variables accordingly.
 `pwd` should show the absolute path of the directory.
 
 From the home directory:
 
 #test-case-image("cd-relative.png")
+
+Indeed, the current working directory is changed to the `Documents/` directory as indicated by `pwd` and `PWD`.
+`OLDPWD` is updated to the previous working directory (in this case, the user's home directory).
 
 #test-case[`cd` with a valid absolute path and `pwd`]
 
@@ -856,6 +873,9 @@ and set the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-absolute-b.png")
 
+The first screenshot shows that the shell correctly changes the directory to the root directory when `/` is specified, setting `PWD` and `OLDPWD` appropriately.
+The second screenshot demonstrates the same for `/usr/bin`.
+
 #test-case[`cd` with `-` and `pwd`]
 
 "`cd -`" should change the current working directory to the previous working directory
@@ -863,6 +883,9 @@ and set the `OLDPWD` and `PWD` environment variables.
 `pwd` should show the absolute path of the directory.
 
 #test-case-image("cd-dash.png")
+
+The screenshot shows that `cd -` indeed changes the current working directory to the previous working directory
+and effectively swaps the `OLDPWD` and `PWD` environment variables.
 
 #test-case[`cd` with two or more arguments]
 
@@ -872,12 +895,17 @@ or modifying the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-two-or-more-arguments.png")
 
+Indeed, an error message is printed and the output of `pwd` and the values of `OLDPWD` and `PWD` are left unchanged.
+
 #test-case[`cd .`]
 
 `cd .` should change the working directory to the current directory~(i.e., the current directory does not change).
-The `OLDPWD` and `PWD` environment variables should be set to the current working directory.
+Both the `OLDPWD` and `PWD` environment variables should be set to the current working directory.
 
 #test-case-image("cd-dot.png")
+
+The screenshot demonstrates that the current working directory is left unchanged.
+Additionally, `OLDPWD` is also set to the current working directory.
 
 #test-case[`cd ..`]
 
@@ -886,6 +914,9 @@ The `OLDPWD` environment variable should be set to the original current working 
 while `PWD` should be set to the parent working directory.
 
 #test-case-image("cd-dot-dot.png")
+
+Indeed, the current working directory is changed to the parent directory
+and `OLDPWD` and `PWD` are set correctly.
 
 #test-case[`cd` with complex relative path]
 
@@ -896,6 +927,11 @@ The `OLDPWD` and `PWD` environment variables should be updated.
 From the assignment directory:
 #test-case-image("cd-relative-complex.png")
 
+The path evaluates to the current working directory,
+so the directory change is equivalent to `cd .`.
+Indeed, the current working directory is left unchanged
+and the `PWD` and `OLDPWD` environment variables are both set to the current working directory.
+
 #test-case[`cd` with complex absolute path]
 
 `cd` should work with complex absolute paths
@@ -904,6 +940,9 @@ The `OLDPWD` and `PWD` environment variables should be updated.
 
 #test-case-image("cd-absolute-complex.png")
 
+Indeed, the current working directory is set to the correct directory (`/`)
+and the `OLDPWD` and `PWD` environment variables are set correctly.
+
 #test-case[`cd` with a non-existent relative path]
 
 `cd` with a non-existent relative path should print an error message to standard error
@@ -911,12 +950,16 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-relative-nonexistent.png")
 
+Indeed, no directory change occurs and an error message is printed.
+
 #test-case[`cd` with a non-existent absolute path]
 
 `cd` with a non-existent absolute path should print an error message to standard error
 without changing the working directory or modifying the `OLDPWD` and `PWD` environment variables.
 
 #test-case-image("cd-absolute-nonexistent.png")
+
+Indeed, no directory change occurs and an error message is printed.
 
 #test-case[`cd` without any arguments but with an unset `HOME` environment variable]
 
@@ -926,6 +969,8 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-without-arguments-no-home.png")
 
+Indeed, no directory change occurs and an error message is printed.
+
 #test-case[`cd` with `-` but with an unset `OLDPWD` environment variable]
 
 "`cd -`" with an unset `OLDPWD` environment variable
@@ -934,17 +979,23 @@ without changing the working directory or modifying the `OLDPWD` and `PWD` envir
 
 #test-case-image("cd-dash-no-oldpwd.png")
 
+Indeed, no directory change occurs and an error message is printed.
+
 #test-case[`cd` in a background job]
 
 Executing `cd` in a background job should not change the current working directory.
 
 #test-case-image("cd-bg.png")
 
+The screenshot demonstrates that indeed no directory change occurs.
+
 #test-case[`pwd` in a background job]
 
 Executing `pwd` in a background job should still print the current working directory.
 
 #test-case-image("pwd-bg.png")
+
+The screenshot demonstrates that `pwd` indeed still shows the correct current working directory.
 
 === `history`
 
@@ -956,6 +1007,9 @@ containing a single entry,
 which is `history` command itself.
 
 #test-case-image("history-without-arguments-and-prev.png")
+
+The screenshot shows that there is indeed only one entry in the command history,
+which is the `history` command itself.
 
 #test-case[`history` without arguments when there are previous commands]
 
@@ -984,10 +1038,20 @@ Executing `history` in a background job should still print the command history.
 
 #test-case[`exit` without any arguments]
 
+When `exit` is called without arguments, the shell process should exit
+with an exit code of `0`.
+
 #test-case-image("exit-without-arguments.png")
 
 #test-case[`exit` with in-range non-negative integer exit code]
+
+When `exit` is called with an in-range non-negative integer exit code (`0`--`255`),
+the shell process should exit with the specified exit code.
+
 #test-case-image("exit-in-range-non-negative.png")
+
+Indeed, the shell exits with the given exit code,
+verified by using the `$?` variable from Bash.
 
 #test-case[`exit` with non-negative integer exit code outside `0`--`255`]
 
@@ -998,6 +1062,9 @@ However, the program should still exit.
 
 #test-case-image("exit-non-negative-outside-0-255.png")
 
+Indeed, the shell exits.
+However, we do not check the exit status since it is unspecified.
+
 #test-case[`exit` with out-of-range integer exit code]
 
 When an exit code out of range of C's `int` data type is specified,
@@ -1006,9 +1073,17 @@ without exiting the shell.
 
 #test-case-image("exit-out-of-range-integer.png")
 
+The shell correctly displays an error message.
+
 #test-case[`exit` with non-integer exit code]
 
+When passing a non-integer argument to `exit`,
+an error message should be printed to the standard error stream
+without exiting the shell.
+
 #test-case-image("exit-non-integer.png")
+
+The shell correctly displays an error message.
 
 #test-case[`exit` with two or more arguments]
 
@@ -1018,11 +1093,15 @@ without exiting the shell.
 
 #test-case-image("exit-two-or-more-arguments.png")
 
+The shell correctly displays an error message.
+
 #test-case[`exit` in a background job]
 
 Executing `exit` in a background job should not cause the shell to exit.
 
 #test-case-image("exit-bg.png")
+
+Indeed, the shell does not exit.
 
 == History Navigation
 
@@ -1109,8 +1188,14 @@ When there is partial input on the latest command line
 and the `Up` arrow key is used to navigate up the command history,
 returning to the latest command line should remember the partial input.
 
+First, we enter `helloworld` without pressing the `Enter` key.
+After pressing the `Up` arrow:
 #test-case-image("history-remember-a.png")
+
+Then, after pressing the `Down` arrow:
 #test-case-image("history-remember-b.png")
+
+We see that the command line is restored to the partial input (`helloworld`).
 
 == Command Repetition
 
@@ -1173,64 +1258,122 @@ The shell correctly prints an error message to the standard error stream.
 
 #test-case[Expansion of `*` alone when there are matching files in the current working directory]
 
-`*` should be expanded to all files in the current working directory.
+`*` should be expanded to all files in the current working directory
+when the current working directory is non-empty.
 
 #test-case-image("wildcard-asterisk-alone.png")
 
+Indeed, `*` matches all files in the current working directory (the assignment directory).
+
 #test-case[Expansion of `*` in combination with other text when there are matching files in the current working directory]
+
+When `*` is used with other text,
+it should be expanded to all matching files in the current working directory.
 
 #test-case-image("wildcard-asterisk-mixed.png")
 
+Indeed, `foo*` matches `foobar` and `*.c` matches `test1.c` and `test2.c`.
+
 #test-case[Expansion of multiple `*` in combination with other text when there are matching files in the current working directory]
+
+The shell should allow multiple asterisks to be used in conjunction with other text.
+All matching files should be returned.
 
 #test-case-image("wildcard-asterisk-multi.png")
 
+`*oo*r` correctly matches `foobar`
+while `*.*` correctly matches all files with a file extension.
+
 #test-case[Expansion of `*` across directories]
+
+`*` should work across directories.
+We test two example cases: `/*` and `/ho*/*/*`:
 
 #test-case-image("wildcard-asterisk-across-directories.png")
 
+Indeed, the wildcards are expanded correctly.
+
 #test-case[Expansion of `*` with no matching files]
 
-When there are no matching files,
+Follow Bash's behaviour, when there are no matching files with `*`,
 the token should be taken literally.
 
 #test-case-image("wildcard-asterisk-no-match.png")
 
+The screenshot demonstrates that, indeed,
+the pattern is taken literally without glob expansion
+when there are no matching files.
+
 #test-case[Expansion of `?` alone when there are matching files in the current working directory]
+
+A `?` by itself should match all single-character file names.
 
 #test-case-image("wildcard-question-alone.png")
 
+Indeed, a `?` matches all single-character file names --- in this case, `a`, `b` and `c`.
+
 #test-case[Expansion of `?` in combination with other text when there are matching files in the current working directory]
+
+Combining `?` with other text should treat `?` as a wildcard for a single character.
 
 #test-case-image("wildcard-question-mixed.png")
 
+The screenshot demonstrates different ways `?` can be used to match the file `foobar`.
+
 #test-case[Expansion of `?` across directories]
+
+Similar to `*`, `?` should be expanded even across directories.
 
 #test-case-image("wildcard-question-across-directories.png")
 
+The screenshot creates a directory `foo` and the files `bar`, `baz` and `helloworld` within `foo`.
+`?` is used in various ways to expand to those files.
+
 #test-case[Expansion of `?` with no matching files]
 
-When there are no matching files, the token should be taken literally.
+Following Bash's behaviour, when there are no matching files with `?`, the token should be taken literally.
 
 #test-case-image("wildcard-question-no-match.png")
+
+Indeed, no glob expansion occurs and the shell takes the token literally.
 
 == Redirections
 
 #test-case[Redirecting standard output]
 
+The shell should allow redirecting the standard output of a command to a given file using `>` syntax.
+
 #test-case-image("redirect-stdout.png")
+
+The screenshot demonstrates that the standard output is indeed
+redirected to the file `hello` for the command `echo "hello world"`.
 
 #test-case[Redirecting standard input]
 
+The shell should allow redirecting the standard input of a command to a given file using `<` syntax.
+
 #test-case-image("redirect-stdin.png")
+
+The screenshot demonstrates that standard input redirection does work.
+In this case, the contents of the file `hello` is sent to the standard input of `cat` via `<`.
 
 #test-case[Redirecting standard error]
 
+The shell should allow redirecting the standard error of a command to a given file using `2>` syntax.
+
 #test-case-image("redirect-stderr.png")
+
+Indeed, the standard error of `ls` is redirected to `error.log`.
 
 #test-case[Redirecting all standard streams]
 
+The shell should allow redirecting all standard streams for a given command at the same time.
+
 #test-case-image("redirect-all.png")
+
+The screenshot redirects the standard output to `out`, the standard error to `err` and the standard input to `in` for the command `echo hello`.
+Indeed, `hello` is written to `out` and an error message is written to `err`
+as the file `in` does not exist.
 
 #test-case[Repeated redirections]
 
@@ -1241,24 +1384,43 @@ all files are still created.
 
 #test-case-image("redirect-repeated.png")
 
+Indeed, there is no error whatsoever.
+The output of `echo hello` is written to `out3`,
+whose contents are retrieved using `cat`.
+
 #test-case[Missing redirection file]
 
-These commands should result in a parse error
-without any commands executed.
+When `>`, `2>` or `<` is used without specifying a file,
+the shell should treat the command line as a parse error
+without executing any commands.
+An error message should be printed to the standard error stream.
 
 #test-case-image("redirect-missing-file.png")
+
+Indeed, the shell prints an error message without executing anything.
 
 == Pipelines
 
 #test-case[Pipeline with one pipe]
 
+Simple case for pipelines using only one pipe.
+
 #test-case-image("pipeline-single.png")
+
+Indeed, the output of `echo hello` is correctly piped to `grep "h"`.
 
 #test-case[Pipeline with multiple pipes]
 
-The test should print `1` on success as there is only one line.
+The shell should allow multiple pipes in a pipeline.
+The test should print `1` on success as there is only one line:
 
 #test-case-image("pipeline-multi.png")
+
+The command line above pipes the output of `cat test` to `grep world`,
+whose output is sent to `wc -l`,
+which counts the number of lines in its input.
+Since there is only one line (`hello world`),
+the command indeed prints `1`.
 
 #test-case[Pipeline with command exiting with non-zero exit code]
 
@@ -1268,6 +1430,13 @@ should still be piped to the standard input stream of the next command.
 
 #test-case-image("pipeline-non-zero.png")
 
+In this case, the standard output of `ls doesntexist` is piped to `wc -l`,
+whose output is then piped to `cat`.
+Since the standard output of `ls doesntexist` is empty,
+we get a `0` from `wc -l` since there are 0 lines.
+Furthermore, the standard error of `ls doesntexist` is correctly printed to the terminal
+since there is no redirection of standard error.
+
 #test-case[Pipeline with missing command]
 
 When a pipeline is specified with a missing command after a pipe,
@@ -1275,6 +1444,9 @@ the shell should print an error message to the standard error stream
 indicating a parse error.
 
 #test-case-image("pipeline-missing.png")
+
+Indeed, for various command lines with missing commands,
+the shell prints an error message.
 
 == Job Execution
 
@@ -1287,6 +1459,8 @@ without waiting for the executed command to terminate.
 
 #test-case-image("job-bg-single.png")
 
+In this case, we execute `sleep 10 &` and immediately execute `ps` to demonstrate that `sleep 10 &` is still running.
+
 #test-case[Multiple background jobs]
 
 Running multiple commands in the background using `&`
@@ -1296,12 +1470,19 @@ without waiting for any of the executed commands to terminate.
 
 #test-case-image("job-bg-multi.png")
 
+Similar to the previous case,
+we spawn a couple of `sleep` processes
+and use `ps` to show that they are still running in the background.
+
 #test-case[Multiple background jobs with non-zero exit codes]
 
 If a command in a list of background jobs exits with a non-zero exit code,
 the subsequent jobs should still execute.
 
 #test-case-image("job-bg-multi-non-zero.png")
+
+The `ls` processes exit with a non-zero exit code since their arguments are invalid.
+However, we see that the shell still executes `echo "Still executes!"`.
 
 #test-case[Clean-up of background job zombies]
 
@@ -1310,11 +1491,17 @@ the shell should not leave any zombie processes behind.
 
 #test-case-image("job-bg-clean-up.png")
 
+First, we spawn a couple of commands in the background.
+Then, we use `ps` to show that the background processes
+no longer exist after the background commands finish executing.
+
 #test-case[Single sequential job with terminating `;`]
 
 For a sequential job, having a `;` at the end of the command line should be allowed.
 
 #test-case-image("job-fg-single.png")
+
+Indeed, the shell still executes the command line even when `;` is given at the end.
 
 #test-case[Multiple sequential jobs]
 
@@ -1322,8 +1509,14 @@ If there are multiple sequential jobs,
 each job should execute in order.
 Later jobs should only start after earlier jobs finish.
 
+Immediately after entering the command line:
 #test-case-image("job-fg-multi-a.png")
+
+After about 5 seconds:
 #test-case-image("job-fg-multi-b.png")
+
+We observe that the shell correctly executes `echo "End"`
+only after `sleep 5` completes.
 
 #test-case[Multiple sequential jobs with non-zero exit codes]
 
@@ -1332,69 +1525,167 @@ the subsequent jobs should still execute.
 
 #test-case-image("job-fg-multi-non-zero.png")
 
+Indeed `echo "Still executes!"` still executes despite the surround `ls` commands returning with a non-zero exit code.
+
 == String Parsing
 
-(All the test cases below should only print one line.)
+For the test cases below,
+`printf` should only print a single line of text
+if the test case passes.
+When multiple arguments are passed to `printf '%s\\n'`,
+`printf` will print each argument on its own line.
+We are verifying that the shell treats each parsed string as a single token
+and hence passes only a single argument to `printf`.
 
 #test-case[Simple double quoted string]
 
+The shell should be able to parse simple double-quoted strings.
+
 #test-case-image("string-double-simple.png")
+
+Indeed, the string `"helloworld123"` is correctly parsed.
 
 #test-case[Double quoted string with whitespace]
 
+The shell should parse double-quoted strings containing whitespace
+as a single token.
+
 #test-case-image("string-double-whitespace.png")
+
+Indeed, the string `" hello world 123 "` is parsed a single token.
 
 #test-case[Double quoted string with special characters]
 
+Special characters in a double-quoted string should be treated literally.
+
 #test-case-image("string-double-special.png")
+
+Indeed, the shell treats the special characters literally without
+interpreting them as their respective functionality.
 
 #test-case[Double quoted string with escape sequences]
 
+Escape sequences should be allowed in double-quoted strings
+to interpret the character after `\` literally.
+This is especially for escaping `"`.
+
 #test-case-image("string-double-escape.png")
+
+The screenshot demonstrates that `\` and `"` can be escaped.
+In fact, any character can be escaped and taken literally using `\`.
 
 #test-case[Simple single quoted string]
 
+The shell should be able to parse simple single-quoted strings.
+
 #test-case-image("string-single-simple.png")
+
+Indeed, the string `'helloworld123'` is correctly parsed.
 
 #test-case[Single quoted string with whitespace]
 
+The shell should parse single-quoted strings containing whitespace
+as a single token.
+
 #test-case-image("string-single-whitespace.png")
+
+Indeed, the string `' hello world 123 '` is parsed a single token.
 
 #test-case[Single quoted string with special characters]
 
+Special characters in a single-quoted string should be treated literally.
+
 #test-case-image("string-single-special.png")
+
+Indeed, the shell treats the special characters literally without
+interpreting them as their respective functionality.
 
 #test-case[Single quoted string with escape sequences]
 
+Escape sequences should be allowed in single-quoted strings
+to interpret the character after `\` literally.
+This is especially for escaping `'`.
+
 #test-case-image("string-single-escape.png")
+
+The screenshot demonstrates that `\` and `'` can be escaped.
+In fact, any character can be escaped and taken literally using `\`.
+Note that this behaviour is different from Bash,
+which does not allow escape sequences in single quotes.
+The specification from the assignment is incompatible with Bash's behaviour.
 
 #test-case[String concatenation]
 
+The shell should allow concatenating single-quoted, double-quoted and non-quoted strings
+by simply putting them in sequence without any whitespace.
+
 #test-case-image("string-concat.png")
+
+Indeed, the strings are concatenated to form a single token
+` hello  world 123 &;!|<>2>"*?[ `
+from `" hello world "`, `' world '`, `123`, `" &;!|<>"` and `'2>"*?[ '`.
 
 == Complex Command Lines
 
 #test-case[Mixture of sequential and background jobs]
 
+The shell should be able to handle a mixture of sequential and background jobs in a single command line.
+
 #test-case-image("complex-cmdline-fg-bg-jobs.png")
+
+The screenshot demonstrates that the shell correctly
+spawns `echo hello world &` in the background,
+executes `sleep 3;` and `ls -lt ;` sequentially
+before starting `ps &` in the background.
 
 #test-case[Mixture of piping and redirections]
 
+The shell should be able to handle both piping and redirections in a single command line.
+
 #test-case-image("complex-cmdline-pipe-redir.png")
 
+The first command line pipes the output of `echo` to `grep`,
+whose output is redirected to the file `hello`.
+`cat` reads from `hello` via standard input redirection,
+and then pipes its output to the standard input of `grep`,
+whose output is then piped to another `cat` command.
+Indeed, we see the correct output `hello world`.
+
 #test-case[Mixture of piping, redirections, sequential jobs and background jobs]
+
+The shell should be able to handle a mixture of piping, redirections,
+sequential jobs and background jobs in the same command line.
 
 #test-case-image("complex-cmdline-pipe-redir-bg-fg-jobs.png")
 
 == Miscellaneous
 
 #test-case[Inheritance of parent environment]
+
+The shell should inherit environment variables from its parent process.
+
+On a fresh start of the shell:
 #test-case-image("misc-env.png")
 
+We see that the shell indeed has environment variables from the parent process.
+
 #test-case[Empty command line]
+
+When entering an empty command line,
+the shell should not execute anything and
+simply prompt for the next command.
+
 #test-case-image("misc-empty.png")
 
+Indeed, pressing `Enter` a few times to give an empty input
+simply makes the shell prompt for a next command.
+
 #test-case[Non-termination on `CTRL-C`, `CTRL-Z` and `CTRL-\`]
+
+The shell should not terminate on `CTRL-C`, `CTRL-Z` or `CTRL-\`.
+This is difficult to demonstrate with screenshots
+since the corresponding signals are simply ignored ---
+we suggest trying it out yourself.
 
 After pressing `CTRL-C`:
 #test-case-image("misc-non-termination-a.png")
@@ -1407,11 +1698,22 @@ After pressing `CTRL-\`:
 
 #test-case[Insignificance of whitespace]
 
+Whitespace should not be significant, except for distinguishing between different string tokens.
+
 #test-case-image("misc-insignificant-whitespace.png")
+
+Indeed, removing whitespace between special characters and words
+does not change the behaviour of the execution.
 
 #test-case[Compilation]
 
+The program should compile without issue.
+
 #test-case-image("misc-compilation.png")
+
+Indeed, the program can be compiled using `make`.
+The build artefacts can also be cleaned up using `make clean`.
+The shell can be run using `build/shell` after building.
 
 = Source Code Listing
 
