@@ -109,6 +109,8 @@
 
 - `src/run.h`, `src/run.c`: Contains code for executing commands given their abstract syntax tree representation.
 
+- `Assignment2.pdf`: This document.
+
 = Task Description
 
 The task is to implement a Unix shell, similar to Bash, using the C programming language.
@@ -193,9 +195,11 @@ Furthermore, the shell must satisfy the following requirements:
 
 - _String parsing_:
   The shell should be able to parse both single-quoted and double-quoted strings.
+  Within quoted strings, special characters like `&` and `;` are taken literally.
   Within a double-quoted string, `\"` can be used to represent a literal `"`.
   Similarly, within a single-quoted string, `\'` can be used to represent a literal `'`.
   In both cases, `\` itself can be escaped using `\\`.
+  Escape sequences can also be used in unquoted strings.
 
 = Self-Diagnosis and Evaluation
 
@@ -356,7 +360,7 @@ The main loop of the shell program consists of the following stages:
 
   1. _Input handling_: Receiving and handling user input for a command line.
 
-  2. _Lexing_: Converting a command line string from the user into a sequence of tokens.
+  2. _Lexing (Tokenisation)_: Converting a command line string from the user into a sequence of tokens.
 
   3. _Parsing_: Converting the sequence of tokens from the lexer into an abstract syntax tree~(AST).
 
@@ -422,7 +426,7 @@ Only after the current line of input is erased
 is the selected command printed to standard output
 to display it to the user.
 
-== Lexing <sec-lexing>
+== Lexing (Tokenisation) <sec-lexing>
 
 The code for lexing is found in `src/raw_lex.h`, `src/raw_lex.c`, `src/lex.h` and `src/lex.c`.
 
@@ -1653,6 +1657,19 @@ Note that this behaviour is different from Bash,
 which does not allow escape sequences in single quotes.
 The specification from the assignment is incompatible with Bash's behaviour.
 
+#test-case[Unquoted string with escape sequences]
+
+Escape sequences should be allowed in unqutoed strings
+to interpret the character after a `\` literally.
+
+```
+  % printf '%s\\n' \\\&\;\!\|\<\>\2\>\"\'\*\?\[\ \a\b\c\d\e\f\1\2\3\4\5\6
+  \&;!|<>2>"'*?[ abcdef123456
+```
+
+Indeed, the output demonstrates that `\` escapes unquoted characters,
+even special and whitespace characters.
+
 #test-case[String concatenation]
 
 The shell should allow concatenating single-quoted, double-quoted and non-quoted strings
@@ -1734,6 +1751,17 @@ After pressing `CTRL-Z`:
 
 After pressing `CTRL-\`:
 #test-case-image("misc-non-termination-c.png")
+
+#test-case[Handling of Slow System Calls]
+
+It is difficult to demonstrate the handling of slow system calls
+via screenshots.
+However, from the other tests,
+we can infer that slow system calls are correctly handled
+since no error messages from `read` calls are printed to the standard error stream
+when a child process terminates
+(the source code uses `perror()` to print error messages on failure).
+Please refer to the source code instead.
 
 #test-case[Insignificance of whitespace]
 
