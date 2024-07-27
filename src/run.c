@@ -268,8 +268,7 @@ void run_job_desc(
     assert(sigprocmask_ret == 0);
 
     struct sh_ast_job const *job = &job_desc->job;
-    pid_t pids[job->cmd_count];
-    pid_t pids_len = 0;
+    pid_t pids_count = 0;
     pid_t pgid = 0;
 
     // If there is only one command, no piping is required.
@@ -290,8 +289,7 @@ void run_job_desc(
         // The command was spawned successfully and is not a foreground builtin.
         if (pid > 0) {
             // Keep track of the PID.
-            pids[0] = pid;
-            pids_len++;
+            pids_count++;
 
             // Set the group ID to the PID.
             pgid = pid;
@@ -343,8 +341,7 @@ void run_job_desc(
             // Keep track of the PID, but only if the command was not a
             // foreground builtin.
             if (pid > 0) {
-                pids[pids_len] = pid;
-                pids_len++;
+                pids_count++;
 
                 // Set the group ID to the PID of the first spawned command.
                 if (pgid == 0) {
@@ -373,7 +370,7 @@ void run_job_desc(
     //
     // Background jobs are consumed by the signal handler for
     // `SIGCHLD` so that they don't become zombie processes.
-    if (job_desc->type == SH_JOB_FG && pids_len > 0) {
+    if (job_desc->type == SH_JOB_FG && pids_count > 0) {
         // Set the terminal foreground process group to the job's process group.
         if (tcsetpgrp(STDIN_FILENO, pgid) < 0) {
             perror("tcsetpgrp");
@@ -382,7 +379,7 @@ void run_job_desc(
         // Wait for the processes.
         size_t wait_successes = 0;
         siginfo_t info;
-        while (wait_successes < pids_len) {
+        while (wait_successes < pids_count) {
             pid_t wait_ret = waitid(P_PGID, pgid, &info, WEXITED | WSTOPPED);
             if (wait_ret < 0) {
                 assert(wait_ret < 0);
@@ -507,7 +504,7 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
             continue;
         }
 
-        int *fds_mem;
+        int *fds_mem = NULL;
         int std_fileno;
         switch (redir.type) {
         case SH_REDIRECT_STDOUT:

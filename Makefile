@@ -24,7 +24,7 @@ INC_DIRS := $(shell find $(SRC_DIR) -type d)
 CFLAGS := $(addprefix -I,$(INC_DIRS))
 
 # Make the compiler generate Makefiles describing the object dependencies.
-CFLAGS += -MMD
+CFLAGS += -MMD -Wall
 
 # Build the executable.
 $(BUILD_DIR)/$(EXE): $(SRC_OBJS)
