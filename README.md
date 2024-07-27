@@ -19,3 +19,14 @@ To clean up build artifacts:
 ```
 make clean
 ```
+
+## Building Documentation
+
+The documentation for this assignment is built using [Typst](https://typst.app).
+Run the following at the project's root directory:
+
+```
+typst docs.typ
+```
+
+This will create a PDF document `docs.pdf`.
