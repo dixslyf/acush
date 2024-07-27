@@ -191,6 +191,12 @@ Furthermore, the shell must satisfy the following requirements:
 - _Non-termination on `CTRL-C`, `CTRL-\` or `CTRL-Z`_:
   The shell must not be terminated when the user enters `CTRL-C`, `CTRL-\` or `CTRL-Z`.
 
+- _String parsing_:
+  The shell should be able to parse both single-quoted and double-quoted strings.
+  Within a double-quoted string, `\"` can be used to represent a literal `"`.
+  Similarly, within a single-quoted string, `\'` can be used to represent a literal `'`.
+  In both cases, `\` itself can be escaped using `\\`.
+
 = Self-Diagnosis and Evaluation
 
 What works:
@@ -333,11 +339,16 @@ What works:
 - Slow system calls (e.g., `read`) are immediately restarted
   when a child process exits and sends a `SIGCHLD` signal to the shell process.
 
+- No resource or memory leaks, verified using `valgrind`.
+
 - Whitespace is not significant except for delimiting tokens of a command line.
 
 What does not work:
 
 - Resizing the terminal window does not re-layout the current input text.
+
+- Left and right arrow keys do not move the cursor around the input.
+  However, this feature was not specified as a requirement in the assignment specification.
 
 = Solution Discussion
 
@@ -391,7 +402,8 @@ Ergo, the shell program re-implements
 some line-editing features, such as deleting characters with backspace.
 Re-implementing such features is complex and typically handled using external libraries like GNU~Readline.
 However, since us students are, sadly, not allowed to use external libraries,
-the shell program re-implements them from scratch.
+the shell program re-implements them from scratch,
+which is far from ideal.
 
 To implement command history navigation,
 the shell must be able to detect the `Up` and `Down` arrow keys.
@@ -692,6 +704,33 @@ For example, the user can enter `CTRL-C` to
 send the `SIGINT` signal to each process
 in the job to cancel them
 — a feature provided by most shells.
+
+= Building and Running
+
+To build the shell,
+run the following in the directory containing `Makefile`:
+
+```bash
+  $ make
+```
+
+This will build the shell and place the artefacts and executable
+under the `build` directory.
+
+The shell can be run by executing the following after the build:
+
+```bash
+  $ build/shell
+```
+
+To clean up build artefacts, run:
+
+```bash
+  $ make clean
+```
+
+Note that this will also remove the executable
+and necessitate recompilation.
 
 = Test Evidence
 
