@@ -1780,33 +1780,3 @@ The program should compile without issue.
 Indeed, the program can be compiled using `make`.
 The build artefacts can also be cleaned up using `make clean`.
 The shell can be run using `build/shell` after building.
-
-= Source Code Listing
-
-#figure(
-  caption: `Makefile`,
-  display-code(read("Makefile"), lang: "Make")
-)
-
-#for file in (
-  "shell.h",
-  "shell.c",
-  "input.h",
-  "input.c",
-  "raw_lex.h",
-  "raw_lex.c",
-  "lex.h",
-  "lex.c",
-  "builtins.h",
-  "builtins.c",
-  "parse.h",
-  "parse.c",
-  "run.h",
-  "run.c",
-) {
-  file = "src/" + file
-  figure(
-    caption: raw(file),
-    display-c(read(file))
-  )
-}
