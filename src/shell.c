@@ -59,6 +59,7 @@ int main() {
     int exit_code = EXIT_SUCCESS;
     while (!should_exit) {
         printf("%s ", sh_ctx.prompt);
+        fflush(stdout);
 
         // Read user input command.
         char *line = NULL;
