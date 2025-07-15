@@ -1,6 +1,6 @@
 CC := gcc
 
-EXE := shell
+EXE := acush
 
 BUILD_DIR := build
 SRC_DIR := src
