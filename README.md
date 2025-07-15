@@ -103,6 +103,18 @@ nix build github:dixslyf/acush#report
 
 The resulting PDF document can then be accessed through the usual `result` symlink.
 
+## A Note on Testing
+
+This project does not include automated tests.
+
+Under the constraints of the university assignment,
+testing was unfortunately required to be conducted manually
+by running the shell interactively,
+verifying behaviour case-by-case
+and providing screenshots as proof.
+While we developed and followed a formal list of test cases (see the report),
+automating them was not feasible given these restrictions.
+
 ## Authors
 
 - Dixon Sean Low Yan Feng ([@dixslyf](https://github.com/dixslyf))
