@@ -64,12 +64,18 @@ To build `acush`, run:
 
 ```
 nix build github:dixslyf/acush
+
+# Or statically linked
+nix build github:dixslyf/acush-static
 ```
 
 To run `acush` without installing it, run:
 
 ```
 nix run github:dixslyf/acush
+
+# Or statically linked
+nix run github:dixslyf/acush-static
 ```
 
 ## Compiling the Report
