@@ -102,3 +102,9 @@ nix build github:dixslyf/acush#report
 ```
 
 The resulting PDF document can then be accessed through the usual `result` symlink.
+
+## Authors
+
+- Dixon Sean Low Yan Feng ([@dixslyf](https://github.com/dixslyf))
+
+- Khon Min Thite ([@khonminthite](https://github.com/khonminthite))
