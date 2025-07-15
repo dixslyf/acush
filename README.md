@@ -75,16 +75,16 @@ nix run github:dixslyf/acush
 ## Compiling the Report
 
 The report for `acush` is written with [Typst](https://typst.app).
-Markup files can be found in the `docs/` directory.
+Markup files can be found in the `report/` directory.
 
 To compile the report, ensure you have Typst installed.
 Then, run the following in the project's root directory:
 
 ```
-typst compile docs/docs.typ
+typst compile report/report.typ
 ```
 
-This will create a PDF document at `docs/docs.pdf`.
+This will create a PDF document at `report/report.pdf`.
 
 ### Nix
 
@@ -92,7 +92,7 @@ The report can also be compiled with Nix.
 To do so, run:
 
 ```
-nix build github:dixslyf/acush#docs
+nix build github:dixslyf/acush#report
 ```
 
 The resulting PDF document can then be accessed through the usual `result` symlink.

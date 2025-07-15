@@ -41,21 +41,21 @@
           '';
         };
 
-        docsSrc = lib.fileset.toSource {
-          root = ./docs;
+        reportSrc = lib.fileset.toSource {
+          root = ./report;
           fileset = lib.fileset.unions [
-            (lib.fileset.fromSource (typixLib.cleanTypstSource ./docs))
-            ./docs/graphics
+            (lib.fileset.fromSource (typixLib.cleanTypstSource ./report))
+            ./report/graphics
           ];
         };
 
-        docsCommonArgs = {
-          typstSource = "docs.typ";
+        reportCommonArgs = {
+          typstSource = "report.typ";
         };
 
-        docs = typixLib.buildTypstProject (docsCommonArgs // { src = docsSrc; });
-        build-docs = typixLib.buildTypstProjectLocal (docsCommonArgs // { src = docsSrc; });
-        watch-docs = typixLib.watchTypstProject { typstSource = "docs/docs.typ"; };
+        report = typixLib.buildTypstProject (reportCommonArgs // { src = reportSrc; });
+        build-report = typixLib.buildTypstProjectLocal (reportCommonArgs // { src = reportSrc; });
+        watch-report = typixLib.watchTypstProject { typstSource = "report/report.typ"; };
       in
       {
         devShells.default = typixLib.devShell {
@@ -67,24 +67,24 @@
             bear
             include-what-you-use
 
-            build-docs
-            watch-docs
+            build-report
+            watch-report
           ];
         };
 
         checks = {
           inherit
             acush
-            docs
-            build-docs
-            watch-docs
+            report
+            build-report
+            watch-report
             ;
         };
 
         packages = {
           inherit
             acush
-            docs
+            report
             ;
           default = acush;
         };
@@ -99,12 +99,12 @@
             acush = acushApp;
             default = acushApp;
 
-            build-docs = flake-utils.lib.mkApp {
-              drv = build-docs;
+            build-report = flake-utils.lib.mkApp {
+              drv = build-report;
             };
 
-            watch-docs = flake-utils.lib.mkApp {
-              drv = watch-docs;
+            watch-report = flake-utils.lib.mkApp {
+              drv = watch-report;
             };
           };
       }
