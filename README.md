@@ -28,7 +28,7 @@ as specified by the assignment:
 
 - **Environment:** Inherits environment variables from the parent shell.
 
-Additional details can be found in the accompanying report (see [_Compiling the Report_](#compiling-the-report)).
+Additional details can be found in the accompanying report (see [_Report_](#report)).
 
 ## Building and Running
 
@@ -78,10 +78,16 @@ nix run github:dixslyf/acush
 nix run github:dixslyf/acush-static
 ```
 
-## Compiling the Report
+## Report
 
+As with most university assignments,
+a report was required.
 The report for `acush` is written with [Typst](https://typst.app).
 Markup files can be found in the `report/` directory.
+
+The compiled report can be accessed from the latest release [here](https://github.com/dixslyf/acush/releases/download/v1.0.0/report.pdf) (PDF).
+
+### Compiling
 
 To compile the report, ensure you have Typst installed.
 Then, run the following in the project's root directory:
@@ -90,9 +96,9 @@ Then, run the following in the project's root directory:
 typst compile report/report.typ
 ```
 
-This will create a PDF document at `report/report.pdf`.
+This will output a PDF document at `report/report.pdf`.
 
-### Nix
+#### Nix
 
 The report can also be compiled with Nix.
 To do so, run:
