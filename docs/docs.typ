@@ -1,12 +1,12 @@
-#import "/docs/constants.typ": *
-#import "/docs/lib.typ": *
+#import "/constants.typ": *
+#import "/lib.typ": *
 
 // SETUP
 
 #set page(
   paper: "a4",
   numbering: "1",
-  number-align: right + top
+  number-align: right + top,
 )
 
 #set heading(numbering: "1.")
@@ -59,7 +59,7 @@
 #set table(
   align: center + horizon,
   stroke: 0.8pt + black,
-  inset: 8pt
+  inset: 8pt,
 )
 
 #show table.cell.where(y: 0): it => {
@@ -75,20 +75,23 @@
   day: 27,
 )
 
-#align(center, [
-  #text(size: TITLE_SIZE)[*ICT374 Assignment 2: Unix Shell Implementation in C*]
+#align(
+  center,
+  [
+    #text(size: TITLE_SIZE)[*ICT374 Assignment 2: Unix Shell Implementation in C*]
 
-  #date.display("[day] [month repr:long], [year]")
-  #grid(
-    columns: (50%, 50%),
-    text(size: SUBTITLE_SIZE)[
-      Dixon Sean Low Yan Feng
-    ],
-    text(size: SUBTITLE_SIZE)[
-      Khon Min Thite
-    ],
-  )
-])
+    #date.display("[day] [month repr:long], [year]")
+    #grid(
+      columns: (50%, 50%),
+      text(size: SUBTITLE_SIZE)[
+        Dixon Sean Low Yan Feng
+      ],
+      text(size: SUBTITLE_SIZE)[
+        Khon Min Thite
+      ],
+    )
+  ],
+)
 
 #outline(indent: auto)
 
@@ -360,13 +363,13 @@ What does not work:
 
 The main loop of the shell program consists of the following stages:
 
-  1. _Input handling_: Receiving and handling user input for a command line.
+1. _Input handling_: Receiving and handling user input for a command line.
 
-  2. _Lexing (Tokenisation)_: Converting a command line string from the user into a sequence of tokens.
+2. _Lexing (Tokenisation)_: Converting a command line string from the user into a sequence of tokens.
 
-  3. _Parsing_: Converting the sequence of tokens from the lexer into an abstract syntax tree~(AST).
+3. _Parsing_: Converting the sequence of tokens from the lexer into an abstract syntax tree~(AST).
 
-  4. _Running commands_: Executing the AST from the parser.
+4. _Running commands_: Executing the AST from the parser.
 
 Furthermore, the shell program maintains a shell context data structure
 that contains contextual information
@@ -529,68 +532,70 @@ by the assignment instructions, with additional information
 to facilitate the execution of the AST.
 For convenience, the provided grammar is repeated below:
 
-#align(center,
-```
-  <command line> ::= <job>
-                   | <job> '&'
-                   | <job> '&' <command line>
-                   | <job> ';'
-                   | <job> ';' <command line>
-                   | '!' <string>
-           <job> ::= <command>
-                   | <job> '|' <command>
-       <command> ::= <simple command>
-                   | <simple command> '<' <pathname>
-                   | <simple command> '>' <pathname>
-                   | <simple command> '2>' <pathname>
-<simple command> ::= <pathname>
-                   | <simple command> <token>
-```
+#align(
+  center,
+  ```
+    <command line> ::= <job>
+                     | <job> '&'
+                     | <job> '&' <command line>
+                     | <job> ';'
+                     | <job> ';' <command line>
+                     | '!' <string>
+             <job> ::= <command>
+                     | <job> '|' <command>
+         <command> ::= <simple command>
+                     | <simple command> '<' <pathname>
+                     | <simple command> '>' <pathname>
+                     | <simple command> '2>' <pathname>
+  <simple command> ::= <pathname>
+                     | <simple command> <token>
+  ```,
 )
 
 As an example, the following is a textual representation of the AST
 for the string `"echo hello > out & ls src | grep shell.c ; ls directory-that-does-not-exist 2 > error-out ; cat < error-out"`:
 
-#align(center,
-```
-ROOT
-  COMMAND_LINE
-    job count: 4
-    BACKGROUND JOB
-      command count: 1
-      COMMAND
-        SIMPLE COMMAND
-          argc: 2
-          argv: echo hello
-        redirect type: 0
-        redirect file: out
-    FOREGROUND JOB
-      command count: 2
-      COMMAND
-        SIMPLE COMMAND
-          argc: 2
-          argv: ls src
-      COMMAND
-        SIMPLE COMMAND
-          argc: 2
-          argv: grep shell.c
-    FOREGROUND JOB
-      command count: 1
-      COMMAND
-        SIMPLE COMMAND
-          argc: 2
-          argv: ls directory-that-does-not-exist
-        redirect type: 2
-        redirect file: error-out
-    FOREGROUND JOB
-      command count: 1
-      COMMAND
-        SIMPLE COMMAND
-          argc: 1
-          argv: cat
-        redirect type: 1
-        redirect file: error-out
-```
+#align(
+  center,
+  ```
+  ROOT
+    COMMAND_LINE
+      job count: 4
+      BACKGROUND JOB
+        command count: 1
+        COMMAND
+          SIMPLE COMMAND
+            argc: 2
+            argv: echo hello
+          redirect type: 0
+          redirect file: out
+      FOREGROUND JOB
+        command count: 2
+        COMMAND
+          SIMPLE COMMAND
+            argc: 2
+            argv: ls src
+        COMMAND
+          SIMPLE COMMAND
+            argc: 2
+            argv: grep shell.c
+      FOREGROUND JOB
+        command count: 1
+        COMMAND
+          SIMPLE COMMAND
+            argc: 2
+            argv: ls directory-that-does-not-exist
+          redirect type: 2
+          redirect file: error-out
+      FOREGROUND JOB
+        command count: 1
+        COMMAND
+          SIMPLE COMMAND
+            argc: 1
+            argv: cat
+          redirect type: 1
+          redirect file: error-out
+  ```,
 )
 
 There are many different types of parsers and ways to implement them.
@@ -748,7 +753,7 @@ and necessitate recompilation.
 
 #let test-case-image(path, width: 75%) = align(
   center,
-  image("/docs/graphics/" + path, width: width)
+  image("/graphics/" + path, width: width),
 )
 
 == External Programs
