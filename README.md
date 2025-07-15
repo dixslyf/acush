@@ -32,11 +32,11 @@ Additional details can be found in the accompanying report (see [_Report_](#repo
 
 ## Building and Running
 
-First, ensure you have the following dependencies:
+First, ensure you have the following installed:
 
-- make
+- `make`
 
-- gcc (or any other C compiler)
+- A C compiler (e.g., `gcc`, `clang`)
 
 To build the shell, run the following in the project's root directory:
 
