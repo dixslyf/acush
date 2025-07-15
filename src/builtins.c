@@ -85,7 +85,7 @@ enum sh_exit_result run_exit(
     // More than 1 argument was given to `exit`, so we don't know how to
     // proceed.
     if (argc > 2) {
-        dprintf(fds.stderr, "exit: unexpected arguments\n");
+        dprintf(fds.err, "exit: unexpected arguments\n");
         return SH_EXIT_UNEXPECTED_ARG_COUNT;
     }
 
@@ -103,13 +103,13 @@ enum sh_exit_result run_exit(
 
     // The entire string is a valid `long` only if `*endptr` is the null byte.
     if (*endptr != '\0') {
-        dprintf(fds.stderr, "exit: unexpected non-integer exit code\n");
+        dprintf(fds.err, "exit: unexpected non-integer exit code\n");
         return SH_EXIT_NONINTEGER_EXIT_CODE;
     }
 
     // The exit code is outside the range of `int`.
     if (exit_code < INT_MIN || exit_code > INT_MAX) {
-        dprintf(fds.stderr, "exit: out-of-range exit code\n");
+        dprintf(fds.err, "exit: out-of-range exit code\n");
         return SH_EXIT_OUT_OF_RANGE_EXIT_CODE;
     }
 
@@ -129,12 +129,12 @@ enum sh_history_result run_history(
     assert(strcmp(argv[0], "history") == 0);
 
     if (argc > 1) {
-        dprintf(fds.stderr, "history: unexpected argument count\n");
+        dprintf(fds.err, "history: unexpected argument count\n");
         return SH_HISTORY_UNEXPECTED_ARG_COUNT;
     }
 
     for (size_t idx = 0; idx < ctx->history_count; idx++) {
-        dprintf(fds.stdout, "%lu  %s\n", idx + 1, ctx->history[idx]);
+        dprintf(fds.out, "%lu  %s\n", idx + 1, ctx->history[idx]);
     }
 
     return SH_HISTORY_SUCCESS;
@@ -151,8 +151,8 @@ enum sh_prompt_result run_prompt(
 
     // Expecting exactly one argument after "prompt".
     if (argc != 2) {
-        dprintf(fds.stderr, "prompt: unexpected argument count\n");
-        dprintf(fds.stderr, "usage: prompt <new-prompt>\n");
+        dprintf(fds.err, "prompt: unexpected argument count\n");
+        dprintf(fds.err, "usage: prompt <new-prompt>\n");
         return SH_PROMPT_UNEXPECTED_ARG_COUNT;
     }
 
@@ -161,7 +161,7 @@ enum sh_prompt_result run_prompt(
     // lifetime of the tokens — not really necessary, but easier housekeeping.
     char *tmp = strdup(argv[1]);
     if (tmp == NULL) {
-        dprintf(fds.stderr, "prompt: %s\n", strerror(errno));
+        dprintf(fds.err, "prompt: %s\n", strerror(errno));
         return SH_PROMPT_MEMORY_ERROR;
     }
 
@@ -180,7 +180,7 @@ run_pwd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
 
     // Check for unexpected arguments.
     if (argc > 1) {
-        dprintf(fds.stderr, "pwd: unexpected argument count\n");
+        dprintf(fds.err, "pwd: unexpected argument count\n");
         return SH_PWD_UNEXPECTED_ARG_COUNT;
     }
 
@@ -189,14 +189,14 @@ run_pwd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
     case SH_GETCWD_SUCCESS:
         break;
     case SH_GETCWD_MEMORY_ERROR:
-        dprintf(fds.stderr, "pwd: %s\n", strerror(errno));
+        dprintf(fds.err, "pwd: %s\n", strerror(errno));
         return SH_PWD_MEMORY_ERROR;
     case SH_GETCWD_GENERIC_ERROR:
-        dprintf(fds.stderr, "pwd: %s\n", strerror(errno));
+        dprintf(fds.err, "pwd: %s\n", strerror(errno));
         return SH_PWD_GENERIC_ERROR;
     }
 
-    dprintf(fds.stdout, "%s\n", cwd);
+    dprintf(fds.out, "%s\n", cwd);
     free(cwd);
     return SH_PWD_SUCCESS;
 }
@@ -209,7 +209,7 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
 
     // Check for unexpected arguments.
     if (argc > 2) {
-        dprintf(fds.stderr, "cd: unexpected argument count\n");
+        dprintf(fds.err, "cd: unexpected argument count\n");
         return SH_CD_UNEXPECTED_ARG_COUNT;
     }
 
@@ -218,10 +218,10 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
     case SH_GETCWD_SUCCESS:
         break;
     case SH_GETCWD_MEMORY_ERROR:
-        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        dprintf(fds.err, "cd: %s\n", strerror(errno));
         return SH_CD_MEMORY_ERROR;
     case SH_GETCWD_GENERIC_ERROR:
-        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        dprintf(fds.err, "cd: %s\n", strerror(errno));
         return SH_CD_GENERIC_ERROR;
     }
 
@@ -234,7 +234,7 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
         dir = getenv("OLDPWD");
         if (dir == NULL) {
             free(oldpwd);
-            dprintf(fds.stderr, "cd: OLDPWD is not set\n");
+            dprintf(fds.err, "cd: OLDPWD is not set\n");
             return SH_CD_OLDPWD_NOT_SET;
         }
         should_pwd = true;
@@ -244,13 +244,13 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
         dir = getenv("HOME");
         if (dir == NULL) {
             free(oldpwd);
-            dprintf(fds.stderr, "cd: HOME is not set\n");
+            dprintf(fds.err, "cd: HOME is not set\n");
             return SH_CD_HOME_NOT_SET;
         }
     }
 
     if (chdir(dir) < 0) {
-        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        dprintf(fds.err, "cd: %s\n", strerror(errno));
         free(oldpwd);
         return SH_CD_GENERIC_ERROR;
     }
@@ -270,10 +270,10 @@ run_cd(struct sh_builtin_std_fds fds, size_t argc, char const *const *argv) {
     case SH_GETCWD_SUCCESS:
         break;
     case SH_GETCWD_MEMORY_ERROR:
-        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        dprintf(fds.err, "cd: %s\n", strerror(errno));
         return SH_CD_MEMORY_ERROR;
     case SH_GETCWD_GENERIC_ERROR:
-        dprintf(fds.stderr, "cd: %s\n", strerror(errno));
+        dprintf(fds.err, "cd: %s\n", strerror(errno));
         return SH_CD_GENERIC_ERROR;
     }
 

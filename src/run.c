@@ -453,9 +453,9 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     // Keep track of the file descriptors of the standard streams for the
     // builtins.
     struct sh_builtin_std_fds fds = (struct sh_builtin_std_fds) {
-        .stdin = STDIN_FILENO,
-        .stdout = STDOUT_FILENO,
-        .stderr = STDERR_FILENO,
+        .in = STDIN_FILENO,
+        .out = STDOUT_FILENO,
+        .err = STDERR_FILENO,
     };
 
     // Handle redirection of stdin for piping.
@@ -467,7 +467,7 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
         close(desc.pipe_desc.write_fd_left);
 
         // Redirect stdin to the read end.
-        fds.stdin = desc.pipe_desc.read_fd_left;
+        fds.in = desc.pipe_desc.read_fd_left;
     }
 
     // Handle redirection of stdout for piping.
@@ -478,7 +478,7 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     // handled at the end of `spawn()`.
     if (desc.pipe_desc.redirect_stdout) {
         // Redirect stdout to the write end.
-        fds.stdout = desc.pipe_desc.write_fd_right;
+        fds.out = desc.pipe_desc.write_fd_right;
     }
 
     // Handle redirection for `>`, `<` and `2>`.
@@ -508,15 +508,15 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
         int std_fileno;
         switch (redir.type) {
         case SH_REDIRECT_STDOUT:
-            fds_mem = &fds.stdout;
+            fds_mem = &fds.out;
             std_fileno = STDOUT_FILENO;
             break;
         case SH_REDIRECT_STDIN:
-            fds_mem = &fds.stdin;
+            fds_mem = &fds.in;
             std_fileno = STDIN_FILENO;
             break;
         case SH_REDIRECT_STDERR:
-            fds_mem = &fds.stderr;
+            fds_mem = &fds.err;
             std_fileno = STDERR_FILENO;
             break;
         }
@@ -531,16 +531,16 @@ int run_builtin_fg(struct sh_shell_context *ctx, struct sh_spawn_desc desc) {
     run_builtin(ctx, fds, desc.argc, desc.argv);
 
     // Close file descriptors if there were redirections.
-    if (fds.stdout != STDOUT_FILENO) {
-        close(fds.stdout);
+    if (fds.out != STDOUT_FILENO) {
+        close(fds.out);
     }
 
-    if (fds.stdin != STDIN_FILENO) {
-        close(fds.stdin);
+    if (fds.in != STDIN_FILENO) {
+        close(fds.in);
     }
 
-    if (fds.stderr != STDERR_FILENO) {
-        close(fds.stderr);
+    if (fds.err != STDERR_FILENO) {
+        close(fds.err);
     }
 
     return 0;
@@ -654,9 +654,9 @@ pid_t spawn(
             // No need to change any of these file descriptors since any
             // redirections should already have been handled.
             struct sh_builtin_std_fds fds = (struct sh_builtin_std_fds) {
-                .stdin = STDIN_FILENO,
-                .stdout = STDOUT_FILENO,
-                .stderr = STDERR_FILENO,
+                .in = STDIN_FILENO,
+                .out = STDOUT_FILENO,
+                .err = STDERR_FILENO,
             };
             int exit_code = run_builtin(ctx, fds, desc.argc, desc.argv);
             exit(exit_code);

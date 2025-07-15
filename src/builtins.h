@@ -16,9 +16,9 @@
  * Each built-in command function uses these file descriptors for their output.
  */
 struct sh_builtin_std_fds {
-    int stdin;  /**< Standard input file descriptor */
-    int stdout; /**< Standard output file descriptor */
-    int stderr; /**< Standard error file descriptor */
+    int in;  /**< Standard input file descriptor */
+    int out; /**< Standard output file descriptor */
+    int err; /**< Standard error file descriptor */
 };
 
 /**
