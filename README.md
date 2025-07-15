@@ -40,19 +40,19 @@ First, ensure you have the following dependencies:
 
 To build the shell, run the following in the project's root directory:
 
-```
+```sh
 make
 ```
 
 After building, you can run the shell with:
 
-```
+```sh
 build/acush
 ```
 
 To clean up build artifacts, run:
 
-```
+```sh
 make clean
 ```
 
@@ -62,7 +62,7 @@ This repository also provides a [Nix](https://nixos.org/) flake.
 
 To build `acush`, run:
 
-```
+```sh
 nix build github:dixslyf/acush
 
 # Or statically linked
@@ -71,7 +71,7 @@ nix build github:dixslyf/acush-static
 
 To run `acush` without installing it, run:
 
-```
+```sh
 nix run github:dixslyf/acush
 
 # Or statically linked
@@ -86,7 +86,7 @@ Markup files can be found in the `report/` directory.
 To compile the report, ensure you have Typst installed.
 Then, run the following in the project's root directory:
 
-```
+```sh
 typst compile report/report.typ
 ```
 
@@ -97,7 +97,7 @@ This will create a PDF document at `report/report.pdf`.
 The report can also be compiled with Nix.
 To do so, run:
 
-```
+```sh
 nix build github:dixslyf/acush#report
 ```
 
