@@ -20,26 +20,15 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        inherit (pkgs) lib;
+        inherit (pkgs)
+          pkgsStatic
+          lib
+          ;
 
         typixLib = typix.lib.${system};
 
-        acush = pkgs.stdenv.mkDerivation {
-          pname = "acush";
-          version = "1.0.0";
-
-          src = ./.;
-
-          nativeBuildInputs = with pkgs; [
-            gnumake
-            gcc
-          ];
-
-          installPhase = ''
-            mkdir -p "$out/bin"
-            cp "build/acush" "$out/bin"
-          '';
-        };
+        acush = pkgs.callPackage ./package.nix { };
+        acush-static = pkgsStatic.callPackage ./package.nix { };
 
         reportSrc = lib.fileset.toSource {
           root = ./report;
@@ -75,6 +64,7 @@
         checks = {
           inherit
             acush
+            acush-static
             report
             build-report
             watch-report
@@ -84,6 +74,7 @@
         packages = {
           inherit
             acush
+            acush-static
             report
             ;
           default = acush;
@@ -98,6 +89,10 @@
           {
             acush = acushApp;
             default = acushApp;
+
+            acush-static = flake-utils.lib.mkApp {
+              drv = self.packages.${system}.acush-static;
+            };
 
             build-report = flake-utils.lib.mkApp {
               drv = build-report;
