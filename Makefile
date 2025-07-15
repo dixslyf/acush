@@ -1,5 +1,3 @@
-CC := gcc
-
 EXE := acush
 
 BUILD_DIR := build
