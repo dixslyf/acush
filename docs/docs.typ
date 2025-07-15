@@ -32,7 +32,7 @@
 
 #set par(justify: true)
 
-#set text(size: TEXT_SIZE, font: TEXT_FONT)
+#set text(size: TEXT_SIZE)
 
 #set list(indent: LIST_INDENT)
 

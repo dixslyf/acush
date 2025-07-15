@@ -1,4 +1,3 @@
-#let TEXT_FONT = "Linux Libertine"
 #let TEXT_SIZE = 12pt
 #let TITLE_SIZE = TEXT_SIZE * 1.4
 #let SUBTITLE_SIZE = TEXT_SIZE
