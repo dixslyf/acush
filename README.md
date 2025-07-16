@@ -85,7 +85,8 @@ a report was required.
 The report for `acush` is written with [Typst](https://typst.app).
 Markup files can be found in the `report/` directory.
 
-The compiled report can be accessed from the latest release [here](https://github.com/dixslyf/acush/releases/download/v1.0.1/report.pdf) (PDF).
+The compiled report can be accessed from the latest release
+[here](https://github.com/dixslyf/acush/releases/latest/download/report.pdf) (PDF).
 
 ### Compiling
 
