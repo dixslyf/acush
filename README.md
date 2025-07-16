@@ -26,7 +26,7 @@ as specified by the assignment:
 
 - **Signal handling:** Do not terminate on `SIGINT` (`Ctrl+C`), `SIGQUIT` (`Ctrl+\`), and `SIGTSTP` (`Ctrl+Z`).
 
-- **Environment:** Inherits environment variables from the parent shell.
+- **Environment:** Inherit environment variables from the parent shell.
 
 Additional details can be found in the accompanying report (see [_Report_](#report)).
 
